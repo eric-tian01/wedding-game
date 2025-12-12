@@ -2,7 +2,7 @@
   "routes": [
     {
       "src": "/",
-      "dest": "/拼图双框版本1.html"
+      "dest": "/puzzle1.html"
     },
     {
       "src": "/(.*)",
