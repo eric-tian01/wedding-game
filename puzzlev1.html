@@ -97,7 +97,7 @@
     <div class="panel">
       <div class="info">
         这张童年照片被撕成了 <strong>16 块不规则碎片</strong>。<br/>
-        左侧是一小叠“碎碎念”的童年，右侧是等待被拼好的画布。<br/>
+        碎片已随机散落在同一个画布里，把它们拖到正确位置即可无缝拼合。<br/>
       </div>
 
       <div class="puzzle-container">
@@ -109,20 +109,21 @@
         <div>已就位碎片：<span id="moves">0</span> / 16</div>
       </div>
       <div class="hint">
-        操作：按住碎片拖动到右侧画布，将其拼好。
-        提示：相邻碎片会无缝拼合。<br/>
+        操作：按住碎片拖动到正确位置，会自动吸附。<br/>
+        提示：全部完成后会触发“亮起来”的淡出效果。<br/>
       </div>
     </div>
   </div>
 
   <script>
     /*************** 可调参数 ***************/
-    const IMAGE_SRC = "./assets/images/my-photo-v1.png";  // ← 唯一改动：图片地址
+    // GitHub Pages 子目录项目建议："/wedding-game/assets/images/my-photo-v1.png"
+    const IMAGE_SRC = "./assets/images/my-photo-v1.png";
     const ROWS = 4;
-    const COLS = 4;  // ROWS * COLS = 12（你原注释如此写，但实际 4x4=16；若你要 12 需改参数——这里我不动）
-    const EDGE_JAG_FACTOR = 0.18; // 竖直曲线摆动幅度（0.05~0.25 可调）
-    const EDGE_SEGMENTS_PER_ROW = 4; // 每行里竖直边细分段数
-    const REVEAL_DURATION = 1200;    // 完成后滤镜淡出的时长（毫秒）
+    const COLS = 4;  // 4x4=16
+    const EDGE_JAG_FACTOR = 0.18;
+    const EDGE_SEGMENTS_PER_ROW = 4;
+    const REVEAL_DURATION = 1200;
     /****************************************/
 
     const canvas = document.getElementById("puzzleCanvas");
@@ -141,8 +142,9 @@
 
     let pieces = [];
     let piecesPlaced = 0;
+
+    // 现在只保留一个区域：boardArea（同一画布内）
     let boardArea = null;
-    let piecesArea = null;
 
     let running = false;
     let startTime = null;
@@ -154,7 +156,7 @@
 
     let imageInitialized = false;
 
-    // 完成后“老照片滤镜”淡出的进度
+    // 完成后滤镜淡出
     let revealProgress = 0;    // 0 -> 1
     let revealing = false;
     let revealStartTime = null;
@@ -197,17 +199,13 @@
       const w = canvas.width;
       const h = canvas.height;
 
-      piecesArea = {
-        x: w * 0.02,
-        y: h * 0.02,
-        width: w * 0.30,
-        height: h * 0.96,
-      };
+      // 单一画布区域：留一点边距更好看
+      const pad = Math.round(w * 0.05);
       boardArea = {
-        x: w * 0.36,
-        y: h * 0.05,
-        width: w * 0.62,
-        height: h * 0.90,
+        x: pad,
+        y: pad,
+        width: w - 2 * pad,
+        height: h - 2 * pad,
       };
     }
 
@@ -217,12 +215,7 @@
     }
 
     function drawAreas() {
-      // 左侧碎片区域轮廓
-      ctx.strokeStyle = "rgba(148,163,184,0.45)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(piecesArea.x, piecesArea.y, piecesArea.width, piecesArea.height);
-
-      // 右侧目标区域
+      // 只画一个方框（目标画布）
       ctx.strokeStyle = "rgba(248,250,252,0.9)";
       ctx.lineWidth = 2;
       ctx.strokeRect(boardArea.x, boardArea.y, boardArea.width, boardArea.height);
@@ -231,12 +224,12 @@
       ctx.fillStyle = "rgba(148,163,184,0.9)";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillText("把碎片拖到这里，拼好童年的一整张照片", boardArea.x + boardArea.width / 2, boardArea.y + 4);
+      ctx.fillText("在这个方框里把碎片拼好", boardArea.x + boardArea.width / 2, boardArea.y + 4);
     }
 
-    // 生成竖直切割线：从上到下的连续曲线
+    // 生成竖直切割线：从上到下的连续曲线（在 boardArea 内）
     function generateVerticalCurves() {
-      const curves = []; // curves[j] = [{x,y}, ...] j:0..COLS
+      const curves = [];
       const totalSeg = ROWS * EDGE_SEGMENTS_PER_ROW;
       const tileW = boardArea.width / COLS;
       const maxDx = tileW * EDGE_JAG_FACTOR;
@@ -250,8 +243,7 @@
 
           let offset = 0;
           if (j > 0 && j < COLS) {
-            const noise = (Math.random() * 2 - 1); // -1 ~ 1
-            offset = noise * maxDx;
+            offset = (Math.random() * 2 - 1) * maxDx;
           }
           const x = baseX + offset;
           arr.push({ x, y });
@@ -300,12 +292,9 @@
           const pts = [];
 
           for (let k = k0; k <= k1; k++) pts.push({ x: leftCurve[k].x, y: leftCurve[k].y });
-
           pts.push({ x: rightCurve[k1].x, y: bottomY });
           pts.push({ x: leftCurve[k1].x, y: bottomY });
-
           for (let k = k1; k >= k0; k--) pts.push({ x: rightCurve[k].x, y: rightCurve[k].y });
-
           pts.push({ x: leftCurve[k0].x, y: topY });
 
           const piece = {
@@ -327,23 +316,26 @@
         }
       }
 
-      const total = pieces.length;
-      const centerX = piecesArea.x + piecesArea.width * 0.55;
-      const centerY = piecesArea.y + piecesArea.height * 0.35;
+      // 初始：碎片随机散落在同一个方框内（boardArea）
+      // 关键：tx/ty 是对“绝对坐标 pathPoints”的平移，因此我们要保证平移后 bbox 仍留在 boardArea 内
+      const margin = 6;
+      pieces.forEach((p) => {
+        const bb = p.bbox;
 
-      pieces.forEach((p, i) => {
-        const w = p.bbox.maxX - p.bbox.minX;
-        const h = p.bbox.maxY - p.bbox.minY;
-        const baseTx = centerX - (p.bbox.minX + w / 2);
-        const baseTy = centerY - (p.bbox.minY + h / 2);
+        const minTx = (boardArea.x - bb.minX) + margin;
+        const maxTx = (boardArea.x + boardArea.width - bb.maxX) - margin;
+        const minTy = (boardArea.y - bb.minY) + margin;
+        const maxTy = (boardArea.y + boardArea.height - bb.maxY) - margin;
 
-        const dx = (i - total / 2) * 4 + (Math.random() - 0.5) * 6;
-        const dy = i * 4 + (Math.random() - 0.5) * 6;
+        // 如果极端情况下可移动空间为负（理论上不该），就退化为 0
+        const rx = (maxTx >= minTx) ? (minTx + Math.random() * (maxTx - minTx)) : 0;
+        const ry = (maxTy >= minTy) ? (minTy + Math.random() * (maxTy - minTy)) : 0;
 
-        p.tx = baseTx + dx;
-        p.ty = baseTy + dy;
+        p.tx = rx;
+        p.ty = ry;
       });
 
+      // 打乱绘制顺序
       for (let i = pieces.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
@@ -388,6 +380,7 @@
         ctx.globalAlpha = 1;
         ctx.restore();
 
+        // 边框
         ctx.save();
         buildPiecePath(ctx, p);
         ctx.strokeStyle = p.placed ? "rgba(253,224,71,0.95)" : "rgba(56,189,248,0.9)";
@@ -437,6 +430,7 @@
       for (let i = pieces.length - 1; i >= 0; i--) {
         const p = pieces[i];
         const bb = p.bbox;
+
         const minX = bb.minX + p.tx - 20;
         const maxX = bb.maxX + p.tx + 20;
         const minY = bb.minY + p.ty - 20;
@@ -466,15 +460,14 @@
       let tx = x - dragOffsetX;
       let ty = y - dragOffsetY;
 
+      // 关键修改：不让碎片拖出“同一个方框(boardArea)”
       const bb = currentPiece.bbox;
-      const w = bb.maxX - bb.minX;
-      const h = bb.maxY - bb.minY;
-      const margin = 10;
+      const margin = 6;
 
-      const minTx = -bb.minX + (-w + margin);
-      const maxTx = canvas.width - bb.maxX - margin;
-      const minTy = -bb.minY + (-h + margin);
-      const maxTy = canvas.height - bb.maxY - margin;
+      const minTx = (boardArea.x - bb.minX) + margin;
+      const maxTx = (boardArea.x + boardArea.width - bb.maxX) - margin;
+      const minTy = (boardArea.y - bb.minY) + margin;
+      const maxTy = (boardArea.y + boardArea.height - bb.maxY) - margin;
 
       currentPiece.tx = Math.min(Math.max(tx, minTx), maxTx);
       currentPiece.ty = Math.min(Math.max(ty, minTy), maxTy);
@@ -489,6 +482,7 @@
       const p = currentPiece;
       currentPiece = null;
 
+      // 吸附逻辑：回到“正确位置(0,0)”就是拼对
       const dist = Math.sqrt(p.tx * p.tx + p.ty * p.ty);
       const snapThreshold = Math.min(boardArea.width / COLS, boardArea.height / ROWS) * 0.35;
 
@@ -579,7 +573,9 @@
     }
 
     img.onload = initAfterImageLoaded;
+
     img.onerror = () => {
+      layoutCanvas();
       clearCanvas();
       ctx.fillStyle = "#f97316";
       ctx.font = "14px -apple-system, system-ui, sans-serif";
@@ -595,6 +591,8 @@
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.width;
+
+      // 这里保持原逻辑：如果已初始化则重建（自适应）
       if (imageInitialized) {
         layoutCanvas();
         createPieces();
@@ -602,6 +600,7 @@
         resetTimer();
         startTimer();
       } else {
+        layoutCanvas();
         clearCanvas();
         ctx.fillStyle = "#9ca3af";
         ctx.font = "14px -apple-system, system-ui, sans-serif";
