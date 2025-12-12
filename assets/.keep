@@ -1,0 +1,4 @@
+mkdir assets
+git add assets
+git commit -m "add assets folder"
+git push
