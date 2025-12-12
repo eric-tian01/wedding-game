@@ -92,11 +92,11 @@
 
 <script>
 (() => {
-  // ===== 你只需要改这三行 =====
-  const ROWS = 4;                         // 行
-  const COLS = 4;                         // 列
-  const IMAGE_URL = "./assets/images/my-photo-v1.png?v=20251213"; // 图片路径(放 assets)，v=改大可防缓存
-  // ============================
+  // ===== 只改这三行 =====
+  const ROWS = 4;
+  const COLS = 4;
+  const IMAGE_URL = "./assets/images/my-photo-v1.png?v=20251214";
+  // =======================
 
   const total = ROWS * COLS;
   document.getElementById("total").textContent = total;
@@ -107,151 +107,232 @@
   const tEl = document.getElementById("t");
   const doneEl = document.getElementById("done");
 
-  let W=0, H=0, scale=1;
-  let img = new Image();
+  let W=0, H=0;
+  const img = new Image();
   img.decoding = "async";
 
-  let pieces = []; // {sx,sy,sw,sh, x,y, w,h, tx,ty, placed}
+  let pieces = []; // 每块：{r,c, x,y, tx,ty, w,h, sx,sy, sw,sh, snapped, pathLocal}
   let dragging = null;
   let dragOffX=0, dragOffY=0;
+  let timer = null, startTime = 0;
+  let solved = false;
+  let glowStart = 0;
 
-  let startTime = 0;
-  let timer = null;
-
+  // ---------- 工具：画布尺寸 ----------
   function resizeCanvas(){
     const box = cv.getBoundingClientRect();
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     W = Math.floor(box.width);
     H = Math.floor(box.height);
-    cv.width = Math.floor(W * dpr);
-    cv.height = Math.floor(H * dpr);
+    cv.width = Math.floor(W*dpr);
+    cv.height = Math.floor(H*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    draw();
   }
 
-  function buildPieces(){
-    pieces = [];
-    const tileW = W / COLS;
-    const tileH = H / ROWS;
+  // ---------- 拼图边形状：为每条内部边随机生成“凸/凹/平” ----------
+  // edgesH[r][c] 表示 (r,c) 与 (r+1,c) 之间的水平边（上下相邻）
+  // edgesV[r][c] 表示 (r,c) 与 (r,c+1) 之间的垂直边（左右相邻）
+  let edgesH = []; 
+  let edgesV = [];
 
-    // 让图片“填满”正方形 canvas：用 cover 思路
+  function makeEdges(){
+    edgesH = Array.from({length: ROWS-1}, ()=>Array.from({length: COLS}, ()=> (Math.random()<0.5 ? 1 : -1)));
+    edgesV = Array.from({length: ROWS}, ()=>Array.from({length: COLS-1}, ()=> (Math.random()<0.5 ? 1 : -1)));
+  }
+
+  // ---------- 生成一块拼图的 Path2D（局部坐标：左上(0,0) 到 (w,h)） ----------
+  function piecePath(r,c,w,h){
+    const p = new Path2D();
+    const tab = Math.min(w,h) * 0.22;      // “凸起”幅度
+    const neck = Math.min(w,h) * 0.10;     // “脖子”宽度
+
+    // 取四边类型：外边=0(直线)，内边=±1(凸/凹)
+    const top    = (r===0)        ? 0 : -edgesH[r-1][c]; // 上边与上方块相反
+    const bottom = (r===ROWS-1)   ? 0 :  edgesH[r][c];
+    const left   = (c===0)        ? 0 : -edgesV[r][c-1];
+    const right  = (c===COLS-1)   ? 0 :  edgesV[r][c];
+
+    // 辅助：画一条带“tab”的边（从 (x1,y1) 到 (x2,y2)）
+    // dir: 1 表示凸到“外侧”，-1 表示凹到“内侧”，0 表示直线
+    function edge(x1,y1,x2,y2,dir,vertical){
+      if (dir===0){
+        p.lineTo(x2,y2);
+        return;
+      }
+      // 分成三段：前1/3、tab、后1/3
+      if (!vertical){
+        // 水平边：x变化
+        const dx = x2-x1;
+        const s1 = x1 + dx*0.33;
+        const s2 = x1 + dx*0.67;
+        const mid = x1 + dx*0.50;
+        const sign = dir;
+
+        p.lineTo(s1, y1);
+
+        // tab（贝塞尔）
+        p.bezierCurveTo(
+          s1 + neck, y1,
+          mid - neck, y1 + sign*tab,
+          mid, y1 + sign*tab
+        );
+        p.bezierCurveTo(
+          mid + neck, y1 + sign*tab,
+          s2 - neck, y1,
+          s2, y1
+        );
+
+        p.lineTo(x2,y2);
+      } else {
+        // 垂直边：y变化
+        const dy = y2-y1;
+        const s1 = y1 + dy*0.33;
+        const s2 = y1 + dy*0.67;
+        const mid = y1 + dy*0.50;
+        const sign = dir;
+
+        p.lineTo(x1, s1);
+
+        p.bezierCurveTo(
+          x1, s1 + neck,
+          x1 + sign*tab, mid - neck,
+          x1 + sign*tab, mid
+        );
+        p.bezierCurveTo(
+          x1 + sign*tab, mid + neck,
+          x1, s2 - neck,
+          x1, s2
+        );
+
+        p.lineTo(x2,y2);
+      }
+    }
+
+    // 从左上开始顺时针
+    p.moveTo(0,0);
+    // top: (0,0) -> (w,0)
+    edge(0,0,w,0, top, false);
+    // right: (w,0) -> (w,h)
+    edge(w,0,w,h, right, true);
+    // bottom: (w,h) -> (0,h)  注意反向水平
+    edge(w,h,0,h, -bottom, false);
+    // left: (0,h) -> (0,0)  注意反向垂直
+    edge(0,h,0,0, -left, true);
+
+    p.closePath();
+    return p;
+  }
+
+  // ---------- cover 裁切：把图像映射到正方形 ----------
+  function computeCover(){
     const imgAR = img.width / img.height;
     const boxAR = W / H;
-
     let drawW, drawH, offsetX, offsetY;
+
     if (imgAR > boxAR){
-      // 图片更宽，按高铺满，左右裁切
       drawH = img.height;
       drawW = img.height * boxAR;
       offsetX = (img.width - drawW)/2;
       offsetY = 0;
     } else {
-      // 图片更高，按宽铺满，上下裁切
       drawW = img.width;
       drawH = img.width / boxAR;
       offsetX = 0;
       offsetY = (img.height - drawH)/2;
     }
+    return {drawW, drawH, offsetX, offsetY};
+  }
 
+  // ---------- 构建碎片 ----------
+  function buildPieces(){
+    solved = false;
+    glowStart = 0;
+
+    pieces = [];
+    const tileW = W / COLS;
+    const tileH = H / ROWS;
+
+    const {drawW, drawH, offsetX, offsetY} = computeCover();
     const sw = drawW / COLS;
     const sh = drawH / ROWS;
 
-    // 初始：所有碎片堆叠在框内（中心附近随机抖动，允许重叠）
     for (let r=0; r<ROWS; r++){
       for (let c=0; c<COLS; c++){
-        const tx = c * tileW;
-        const ty = r * tileH;
+        const tx = c*tileW;
+        const ty = r*tileH;
 
-        const jitter = 18; // 堆叠抖动幅度(像素)
+        // 初始：堆叠在中心
+        const jitter = 18;
         const x0 = (W - tileW)/2 + (Math.random()*2-1)*jitter;
         const y0 = (H - tileH)/2 + (Math.random()*2-1)*jitter;
 
         pieces.push({
+          r,c,
+          x:x0, y:y0,
+          tx,ty,
+          w:tileW, h:tileH,
           sx: offsetX + c*sw,
           sy: offsetY + r*sh,
           sw, sh,
-          x: x0, y: y0,
-          w: tileW, h: tileH,
-          tx, ty,
-          placed: false
+          snapped:false,
+          pathLocal: piecePath(r,c,tileW,tileH),
         });
       }
     }
-    // 打乱层级（绘制顺序）
-    pieces.sort(() => Math.random() - 0.5);
+    // 打乱绘制层级
+    pieces.sort(()=>Math.random()-0.5);
     doneEl.textContent = "0";
   }
 
-  function draw(){
-    if (!W || !H) return;
-    ctx.clearRect(0,0,W,H);
-
-    // 背景
-    ctx.fillStyle = "#020617";
-    ctx.fillRect(0,0,W,H);
-
-    if (!img.complete) {
-      ctx.fillStyle = "rgba(229,231,235,.7)";
-      ctx.font = "14px system-ui, -apple-system, Segoe UI";
-      ctx.textAlign = "center";
-      ctx.fillText("正在加载照片，请稍候…", W/2, H/2);
-      return;
-    }
-
-    // 先画未拖动的，再画拖动的（保证拖动在最上层）
-    const list = dragging ? pieces.filter(p=>p!==dragging).concat([dragging]) : pieces;
-    for (const p of list){
-      ctx.globalAlpha = p.placed ? 0.92 : 1.0;
-      ctx.drawImage(img, p.sx,p.sy,p.sw,p.sh, p.x,p.y,p.w,p.h);
-
-      // 轻微边框
-      ctx.globalAlpha = 0.25;
-      ctx.strokeStyle = "#94a3b8";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(p.x+0.5,p.y+0.5,p.w-1,p.h-1);
-      ctx.globalAlpha = 1.0;
-    }
-  }
-
+  // ---------- 命中测试：用 Path2D + isPointInPath（从上往下） ----------
   function hitTest(mx,my){
-    // 从上往下找（后画的在上面）
     for (let i=pieces.length-1; i>=0; i--){
       const p = pieces[i];
-      if (p.placed) continue;
-      if (mx>=p.x && mx<=p.x+p.w && my>=p.y && my<=p.y+p.h) return p;
+      // solved 之后才全锁死；否则即使 snapped 也允许拖
+      if (solved) continue;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      const ok = ctx.isPointInPath(p.pathLocal, mx - p.x, my - p.y);
+      ctx.restore();
+      if (ok) return p;
     }
     return null;
   }
 
-  function snapIfClose(p){
+  // ---------- 吸附：只“计为就位”，不锁死；允许再拖走 ----------
+  function updateSnapped(p){
     const dx = p.x - p.tx;
     const dy = p.y - p.ty;
     const dist = Math.hypot(dx,dy);
-    const thresh = Math.min(p.w,p.h) * 0.18; // 吸附阈值
+    const thresh = Math.min(p.w,p.h) * 0.12;
+
+    // 只要足够接近，就把它“吸”到目标，但仍可拖动
     if (dist < thresh){
       p.x = p.tx;
       p.y = p.ty;
-      p.placed = true;
-      updateDone();
-      return true;
+      p.snapped = true;
+    } else {
+      p.snapped = false;
     }
-    return false;
   }
 
-  function updateDone(){
-    const done = pieces.filter(p=>p.placed).length;
+  function updateDoneAndSolved(){
+    const done = pieces.filter(p=>p.snapped).length;
     doneEl.textContent = String(done);
-    if (done === total){
+    if (done === total && !solved){
+      solved = true;
       stopTimer();
+      glowStart = performance.now();
     }
   }
 
+  // ---------- 计时 ----------
   function startTimer(){
     if (timer) return;
     startTime = performance.now();
-    timer = setInterval(() => {
-      const s = (performance.now() - startTime)/1000;
-      tEl.textContent = s.toFixed(2);
+    timer = setInterval(()=>{
+      tEl.textContent = ((performance.now()-startTime)/1000).toFixed(2);
     }, 60);
   }
   function stopTimer(){
@@ -260,15 +341,83 @@
     timer = null;
   }
 
-  function pointerPos(e){
-    const rect = cv.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left),
-      y: (e.clientY - rect.top)
-    };
+  // ---------- 绘制 ----------
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0,0,W,H);
+
+    if (!img.complete){
+      ctx.fillStyle = "rgba(229,231,235,.7)";
+      ctx.font = "14px system-ui, -apple-system, Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText("正在加载照片，请稍候…", W/2, H/2);
+      return;
+    }
+
+    // 完成特效：全亮 + 发光（短暂）
+    const now = performance.now();
+    let glow = 0;
+    if (solved && glowStart){
+      glow = Math.min(1, (now - glowStart)/700); // 0~1
+    }
+
+    const list = dragging ? pieces.filter(p=>p!==dragging).concat([dragging]) : pieces;
+
+    for (const p of list){
+      ctx.save();
+      ctx.translate(p.x, p.y);
+
+      // clip 出不规则碎片形状
+      ctx.clip(p.pathLocal);
+
+      // 视觉逻辑：
+      // - 未完成：整体灰；snapped 的块略微减少灰度（但仍偏灰）
+      // - 完成：逐渐恢复彩色 + 发光
+      if (!solved){
+        const g = p.snapped ? 0.55 : 1.0;  // snapped 也不“亮起来”，只是略微提示
+        ctx.filter = `grayscale(${g}) contrast(1.05)`;
+      } else {
+        // 从灰到彩
+        const g = Math.max(0, 1 - glow);
+        ctx.filter = `grayscale(${g})`;
+        // glow 阴影
+        ctx.shadowColor = `rgba(255,255,255,${0.35*glow})`;
+        ctx.shadowBlur = 28 * glow;
+      }
+
+      // 画该块对应的图像区域
+      ctx.drawImage(
+        img,
+        p.sx, p.sy, p.sw, p.sh,
+        0, 0, p.w, p.h
+      );
+
+      ctx.restore();
+
+      // 轮廓线（不泄题，只做质感）
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.globalAlpha = solved ? 0.18 : 0.22;
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1;
+      ctx.stroke(p.pathLocal);
+      ctx.restore();
+    }
+
+    // 完成后持续一小段动画更顺滑
+    if (solved && glow < 1){
+      requestAnimationFrame(draw);
+    }
   }
 
-  cv.addEventListener("pointerdown", (e) => {
+  // ---------- 事件 ----------
+  function pointerPos(e){
+    const rect = cv.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  cv.addEventListener("pointerdown", (e)=>{
     const {x,y} = pointerPos(e);
     const p = hitTest(x,y);
     if (!p) return;
@@ -276,7 +425,7 @@
     startTimer();
     dragging = p;
 
-    // 提到最上层：把它移到数组末尾
+    // 提到最上层
     pieces = pieces.filter(q=>q!==p);
     pieces.push(p);
 
@@ -286,54 +435,58 @@
     draw();
   });
 
-  cv.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
+  cv.addEventListener("pointermove", (e)=>{
+    if (!dragging || solved) return;
     const {x,y} = pointerPos(e);
     dragging.x = x - dragOffX;
     dragging.y = y - dragOffY;
+    // 拖动中，先认为没就位（避免“吸住就永远算对”）
+    dragging.snapped = false;
     draw();
   });
 
-  cv.addEventListener("pointerup", (e) => {
+  cv.addEventListener("pointerup", ()=>{
     if (!dragging) return;
-    snapIfClose(dragging);
+    updateSnapped(dragging);
+    updateDoneAndSolved();
     dragging = null;
     draw();
   });
 
-  window.addEventListener("resize", () => {
+  window.addEventListener("resize", ()=>{
     resizeCanvas();
-    // 重建碎片（避免尺寸变了坐标错位）
-    if (img.complete) {
+    if (img.complete){
+      // 尺寸变化时重新开局更稳（否则 path、坐标都会错）
+      makeEdges();
       buildPieces();
       draw();
     }
   });
 
-  // 加载图片：如果这里失败，你就会一直看到“正在加载照片…”
-  img.onload = () => {
+  // ---------- 加载 ----------
+  img.onload = ()=>{
     resizeCanvas();
+    makeEdges();
     buildPieces();
     draw();
   };
-  img.onerror = () => {
-  resizeCanvas();
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle = "rgba(229,231,235,.85)";
-  ctx.font = "14px system-ui, -apple-system, Segoe UI";
-  ctx.textAlign = "center";
 
-  const realUrl = new URL(IMAGE_URL, location.href).href;
-  console.error("IMAGE LOAD FAIL:", realUrl);
-
-  ctx.fillText("图片加载失败", W/2, H/2 - 10);
-  ctx.fillText(realUrl, W/2, H/2 + 12);
-};
+  img.onerror = ()=>{
+    resizeCanvas();
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = "rgba(229,231,235,.85)";
+    ctx.font = "14px system-ui, -apple-system, Segoe UI";
+    ctx.textAlign = "center";
+    const realUrl = new URL(IMAGE_URL, location.href).href;
+    console.error("IMAGE LOAD FAIL:", realUrl);
+    ctx.fillText("图片加载失败", W/2, H/2 - 10);
+    ctx.fillText(realUrl, W/2, H/2 + 12);
+  };
 
   img.src = IMAGE_URL;
-
 })();
 </script>
+
 </body>
 </html>
 
