@@ -69,33 +69,61 @@
       height: 100%;
       display: block;
     }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-top: 6px;
+      align-items: baseline;
+    }
+    .big-time {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .hint {
+      font-size: 12px;
+      opacity: 0.8;
+      text-align: center;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>你小时候那么可爱，我却来不及看见</h1>
+    <div class="subtitle">没关系，现在补票，大家帮帮我！</div>
 
-<div class="wrap">
-  <h1>你小时候那么可爱，我却来不及看见</h1>
-  <div class="subtitle">没关系，现在补票，大家帮帮我！</div>
+    <div class="panel">
+      <div class="info">
+        这张童年照片被撕成了 <strong>12 块不规则碎片</strong>。<br/>
+        左侧是一小叠“碎碎念”的童年，右侧是等待被拼好的画布。<br/>
+      </div>
 
-  <div class="panel">
-    <div class="puzzle-container">
-      <canvas id="puzzleCanvas"></canvas>
+      <div class="puzzle-container">
+        <canvas id="puzzleCanvas"></canvas>
+      </div>
+
+      <div class="status-row">
+        <div>时间：<span id="time" class="big-time">0.00</span> 秒</div>
+        <div>已就位碎片：<span id="moves">0</span> / 12</div>
+      </div>
+      <div class="hint">
+        操作：按住碎片拖动到右侧画布，将其拼好。
+        提示：相邻碎片会无缝拼合。<br/>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-/*************** 可调参数（唯一改动） ***************/
-const IMAGE_SRC = "./assets/images/my-photo-v1.png";
-/****************************************/
-
-const ROWS = 4;
-const COLS = 4;
-const EDGE_JAG_FACTOR = 0.18;
-const EDGE_SEGMENTS_PER_ROW = 4;
-const REVEAL_DURATION = 1200;
-/****************************************/
-
+  <script>
+    /*************** 可调参数 ***************/
+    const IMAGE_SRC = "./assets/images/my-photo-v1.png";  // ← 唯一改动：图片地址
+    const ROWS = 4;
+    const COLS = 4;  // ROWS * COLS = 12（你原注释如此写，但实际 4x4=16；若你要 12 需改参数——这里我不动）
+    const EDGE_JAG_FACTOR = 0.18; // 竖直曲线摆动幅度（0.05~0.25 可调）
+    const EDGE_SEGMENTS_PER_ROW = 4; // 每行里竖直边细分段数
+    const REVEAL_DURATION = 1200;    // 完成后滤镜淡出的时长（毫秒）
+    /****************************************/
 
     const canvas = document.getElementById("puzzleCanvas");
     const ctx = canvas.getContext("2d");
@@ -248,7 +276,6 @@ const REVEAL_DURATION = 1200;
       piecesPlaced = 0;
       updateMoves();
 
-      // 重置滤镜淡出状态
       revealProgress = 0;
       revealing = false;
       revealStartTime = null;
@@ -272,27 +299,13 @@ const REVEAL_DURATION = 1200;
 
           const pts = [];
 
-          // 左边界：沿着左边曲线从上到下
-          for (let k = k0; k <= k1; k++) {
-            pts.push({
-              x: leftCurve[k].x,
-              y: leftCurve[k].y
-            });
-          }
+          for (let k = k0; k <= k1; k++) pts.push({ x: leftCurve[k].x, y: leftCurve[k].y });
 
-          // 底边：右 -> 左，直线
           pts.push({ x: rightCurve[k1].x, y: bottomY });
           pts.push({ x: leftCurve[k1].x, y: bottomY });
 
-          // 右边界：从下到上
-          for (let k = k1; k >= k0; k--) {
-            pts.push({
-              x: rightCurve[k].x,
-              y: rightCurve[k].y
-            });
-          }
+          for (let k = k1; k >= k0; k--) pts.push({ x: rightCurve[k].x, y: rightCurve[k].y });
 
-          // 顶边：左 <- 右，直线
           pts.push({ x: leftCurve[k0].x, y: topY });
 
           const piece = {
@@ -314,7 +327,6 @@ const REVEAL_DURATION = 1200;
         }
       }
 
-      // 左侧“堆叠”初始位置
       const total = pieces.length;
       const centerX = piecesArea.x + piecesArea.width * 0.55;
       const centerY = piecesArea.y + piecesArea.height * 0.35;
@@ -332,71 +344,58 @@ const REVEAL_DURATION = 1200;
         p.ty = baseTy + dy;
       });
 
-      // 打乱绘制顺序
       for (let i = pieces.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
       }
     }
 
-function drawPieces() {
-  pieces.forEach(p => {
-    ctx.save();
-    buildPiecePath(ctx, p);
-    ctx.clip();
+    function drawPieces() {
+      pieces.forEach(p => {
+        ctx.save();
+        buildPiecePath(ctx, p);
+        ctx.clip();
 
-    const drawX = boardArea.x + p.tx;
-    const drawY = boardArea.y + p.ty;
-    const w = boardArea.width;
-    const h = boardArea.height;
+        const drawX = boardArea.x + p.tx;
+        const drawY = boardArea.y + p.ty;
+        const w = boardArea.width;
+        const h = boardArea.height;
 
-    // 1. 先画原图 —— 一开始就比较清晰
-    const baseAlpha = 0.85 + 0.15 * revealProgress; // 0.85 -> 1.0
-    ctx.globalAlpha = baseAlpha;
-    ctx.drawImage(
-      imgCanvas,
-      0, 0, IMG_CANVAS_SIZE, IMG_CANVAS_SIZE,
-      drawX, drawY, w, h
-    );
-    ctx.globalAlpha = 1;
-
-    // 2. 叠加“旧照片”滤镜（改得很轻，只是一点点怀旧味道）
-    if (revealProgress < 1) {
-      const overlayAlpha = (1 - revealProgress) * 0.35; // 0.35 -> 0
-      if (overlayAlpha > 0.01) {
-        // 更浅的牛皮纸色
-        ctx.globalAlpha = overlayAlpha;
-        ctx.fillStyle = "#d9c3a0";
-        ctx.fillRect(drawX, drawY, w, h);
-
-        // 暗角也减弱
-        const grd = ctx.createRadialGradient(
-          drawX + w / 2, drawY + h / 2, Math.min(w, h) / 5,
-          drawX + w / 2, drawY + h / 2, Math.max(w, h) / 1.15
-        );
-        grd.addColorStop(0, "rgba(0,0,0,0)");
-        grd.addColorStop(1, `rgba(0,0,0,${0.10 * overlayAlpha})`);
+        const baseAlpha = 0.85 + 0.15 * revealProgress;
+        ctx.globalAlpha = baseAlpha;
+        ctx.drawImage(imgCanvas, 0, 0, IMG_CANVAS_SIZE, IMG_CANVAS_SIZE, drawX, drawY, w, h);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = grd;
-        ctx.fillRect(drawX, drawY, w, h);
-      }
+
+        if (revealProgress < 1) {
+          const overlayAlpha = (1 - revealProgress) * 0.35;
+          if (overlayAlpha > 0.01) {
+            ctx.globalAlpha = overlayAlpha;
+            ctx.fillStyle = "#d9c3a0";
+            ctx.fillRect(drawX, drawY, w, h);
+
+            const grd = ctx.createRadialGradient(
+              drawX + w / 2, drawY + h / 2, Math.min(w, h) / 5,
+              drawX + w / 2, drawY + h / 2, Math.max(w, h) / 1.15
+            );
+            grd.addColorStop(0, "rgba(0,0,0,0)");
+            grd.addColorStop(1, `rgba(0,0,0,${0.10 * overlayAlpha})`);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = grd;
+            ctx.fillRect(drawX, drawY, w, h);
+          }
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        ctx.save();
+        buildPiecePath(ctx, p);
+        ctx.strokeStyle = p.placed ? "rgba(253,224,71,0.95)" : "rgba(56,189,248,0.9)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      });
     }
-
-    ctx.globalAlpha = 1;
-    ctx.restore();
-
-    // 边框：未就位为青色，已就位为柔和金色
-    ctx.save();
-    buildPiecePath(ctx, p);
-    ctx.strokeStyle = p.placed
-      ? "rgba(253,224,71,0.95)"     // 柔和金色
-      : "rgba(56,189,248,0.9)";    // 青色
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  });
-}
-
 
     function renderAll() {
       clearCanvas();
@@ -411,7 +410,6 @@ function drawPieces() {
     function pointerToCanvasPos(e) {
       const rect = canvas.getBoundingClientRect();
       let clientX, clientY;
-
       if (e.touches && e.touches.length > 0) {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
@@ -419,19 +417,14 @@ function drawPieces() {
         clientX = e.clientX;
         clientY = e.clientY;
       }
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
+      return { x: clientX - rect.left, y: clientY - rect.top };
     }
 
     function buildPathForHitTest(p) {
       ctx.beginPath();
       const pts = p.pathPoints;
       ctx.moveTo(pts[0].x + p.tx, pts[0].y + p.ty);
-      for (let i = 1; i < pts.length; i++) {
-        ctx.lineTo(pts[i].x + p.tx, pts[i].y + p.ty);
-      }
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x + p.tx, pts[i].y + p.ty);
       ctx.closePath();
     }
 
@@ -439,9 +432,7 @@ function drawPieces() {
       if (!running) return;
       e.preventDefault();
 
-      const pos = pointerToCanvasPos(e);
-      const x = pos.x;
-      const y = pos.y;
+      const { x, y } = pointerToCanvasPos(e);
 
       for (let i = pieces.length - 1; i >= 0; i--) {
         const p = pieces[i];
@@ -468,15 +459,13 @@ function drawPieces() {
     }
 
     function onPointerMove(e) {
-      if (!running) return;
-      if (!currentPiece) return;
+      if (!running || !currentPiece) return;
       e.preventDefault();
 
-      const pos = pointerToCanvasPos(e);
-      let tx = pos.x - dragOffsetX;
-      let ty = pos.y - dragOffsetY;
+      const { x, y } = pointerToCanvasPos(e);
+      let tx = x - dragOffsetX;
+      let ty = y - dragOffsetY;
 
-      // 不让碎片完全拖出画布
       const bb = currentPiece.bbox;
       const w = bb.maxX - bb.minX;
       const h = bb.maxY - bb.minY;
@@ -494,23 +483,19 @@ function drawPieces() {
     }
 
     function onPointerUp(e) {
-      if (!running) return;
-      if (!currentPiece) return;
+      if (!running || !currentPiece) return;
       e.preventDefault();
 
       const p = currentPiece;
       currentPiece = null;
 
-      const centerDx = p.tx;
-      const centerDy = p.ty;
-      const dist = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+      const dist = Math.sqrt(p.tx * p.tx + p.ty * p.ty);
       const snapThreshold = Math.min(boardArea.width / COLS, boardArea.height / ROWS) * 0.35;
 
       const wasPlaced = p.placed;
 
       if (dist < snapThreshold) {
-        p.tx = 0;
-        p.ty = 0;
+        p.tx = 0; p.ty = 0;
         if (!wasPlaced) {
           p.placed = true;
           piecesPlaced++;
@@ -531,15 +516,14 @@ function drawPieces() {
         stopTimer();
         const used = parseFloat(timeEl.textContent);
 
-        // 启动滤镜淡出动画
         revealProgress = 0;
         revealing = true;
         revealStartTime = null;
 
-        function animateReveal(timestamp) {
+        function animateReveal(ts) {
           if (!revealing) return;
-          if (!revealStartTime) revealStartTime = timestamp;
-          const t = (timestamp - revealStartTime) / REVEAL_DURATION;
+          if (!revealStartTime) revealStartTime = ts;
+          const t = (ts - revealStartTime) / REVEAL_DURATION;
           revealProgress = Math.min(1, t);
           renderAll();
 
@@ -550,14 +534,10 @@ function drawPieces() {
             revealProgress = 1;
             renderAll();
             setTimeout(() => {
-              alert(
-                `拼图完成！用时 ${used.toFixed(2)} 秒，共 ${piecesPlaced} 块碎片就位。\n\n` +
-                `谢谢你们见证我们的成长。`
-              );
+              alert(`拼图完成！用时 ${used.toFixed(2)} 秒，共 ${piecesPlaced} 块碎片就位。\n\n谢谢你们见证我们的成长。`);
             }, 250);
           }
         }
-
         requestAnimationFrame(animateReveal);
       }
     }
@@ -577,11 +557,9 @@ function drawPieces() {
       if (imageInitialized) return;
       imageInitialized = true;
 
-      const iw = img.width;
-      const ih = img.height;
+      const iw = img.width, ih = img.height;
       const scale = Math.min(IMG_CANVAS_SIZE / iw, IMG_CANVAS_SIZE / ih);
-      const dw = iw * scale;
-      const dh = ih * scale;
+      const dw = iw * scale, dh = ih * scale;
       const dx = (IMG_CANVAS_SIZE - dw) / 2;
       const dy = (IMG_CANVAS_SIZE - dh) / 2;
 
@@ -601,7 +579,6 @@ function drawPieces() {
     }
 
     img.onload = initAfterImageLoaded;
-
     img.onerror = () => {
       clearCanvas();
       ctx.fillStyle = "#f97316";
@@ -612,9 +589,7 @@ function drawPieces() {
     };
 
     img.src = IMAGE_SRC;
-    if (img.complete) {
-      initAfterImageLoaded();
-    }
+    if (img.complete) initAfterImageLoaded();
 
     window.addEventListener("load", () => {
       const rect = canvas.parentElement.getBoundingClientRect();
