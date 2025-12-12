@@ -1,1 +1,679 @@
 
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>你小时候那么可爱，我也想看看</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .wrap {
+      width: min(700px, 96vw);
+      margin: 16px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      opacity: 0.8;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+    .panel {
+      background: radial-gradient(circle at top, rgba(30,64,175,0.35), rgba(15,23,42,0.95));
+      border-radius: 14px;
+      padding: 10px 12px 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      box-sizing: border-box;
+    }
+    .info {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .info strong {
+      color: #fde68a;
+      font-weight: 600;
+    }
+    .puzzle-container {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #020617;
+      border: 2px solid rgba(148, 163, 184, 0.5);
+      touch-action: none;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-top: 6px;
+      align-items: baseline;
+    }
+    .big-time {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .hint {
+      font-size: 12px;
+      opacity: 0.8;
+      text-align: center;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>你小时候那么可爱，我也想看看</h1>
+    <div class="subtitle">大家请帮帮我！</div>
+
+    <div class="panel">
+      <div class="info">
+        这张童年照片被撕成了 <strong>16 块不规则碎片</strong>。<br/>
+        图中是一小叠“碎碎念”的童年，等待被拼好。<br/>
+      </div>
+
+      <div class="puzzle-container">
+        <canvas id="puzzleCanvas"></canvas>
+      </div>
+
+      <div class="status-row">
+        <div>时间：<span id="time" class="big-time">0.00</span> 秒</div>
+        <div>已就位碎片：<span id="moves">0</span> / 12</div>
+      </div>
+      <div class="hint">
+        操作：按住碎片拖动到右侧画布，将其拼好。
+        
+        提示：相邻碎片会无缝拼合。<br/>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*************** 可调参数 ***************/
+    const IMAGE_SRC = "wedding_v1.png";
+    const ROWS = 4;
+    const COLS = 4;  // ROWS * COLS = 12
+    const EDGE_JAG_FACTOR = 0.18; // 竖直曲线摆动幅度（0.05~0.25 可调）
+    const EDGE_SEGMENTS_PER_ROW = 4; // 每行里竖直边细分段数
+    const REVEAL_DURATION = 1200;    // 完成后滤镜淡出的时长（毫秒）
+    /****************************************/
+
+    const canvas = document.getElementById("puzzleCanvas");
+    const ctx = canvas.getContext("2d");
+    const timeEl = document.getElementById("time");
+    const movesEl = document.getElementById("moves");
+
+    const img = new Image();
+
+    // 离屏画布：存放原图（彩色）
+    const IMG_CANVAS_SIZE = 800;
+    const imgCanvas = document.createElement("canvas");
+    imgCanvas.width = IMG_CANVAS_SIZE;
+    imgCanvas.height = IMG_CANVAS_SIZE;
+    const imgCtx = imgCanvas.getContext("2d");
+
+    let pieces = [];
+    let piecesPlaced = 0;
+    let boardArea = null;
+    let piecesArea = null;
+
+    let running = false;
+    let startTime = null;
+    let timerId = null;
+
+    let currentPiece = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    let imageInitialized = false;
+
+    // 完成后“老照片滤镜”淡出的进度
+    let revealProgress = 0;    // 0 -> 1
+    let revealing = false;
+    let revealStartTime = null;
+
+    function resetTimer() {
+      stopTimer();
+      timeEl.textContent = "0.00";
+    }
+
+    function startTimer() {
+      startTime = performance.now();
+      if (timerId) cancelAnimationFrame(timerId);
+
+      running = true;
+      function tick(now) {
+        if (!running) return;
+        const elapsed = (now - startTime) / 1000;
+        timeEl.textContent = elapsed.toFixed(2);
+        timerId = requestAnimationFrame(tick);
+      }
+      timerId = requestAnimationFrame(tick);
+    }
+
+    function stopTimer() {
+      if (timerId) {
+        cancelAnimationFrame(timerId);
+        timerId = null;
+      }
+    }
+
+    function updateMoves() {
+      movesEl.textContent = piecesPlaced;
+    }
+
+    function layoutCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.width;
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      piecesArea = {
+        x: w * 0.02,
+        y: h * 0.02,
+        width: w * 0.30,
+        height: h * 0.96,
+      };
+      boardArea = {
+        x: w * 0.36,
+        y: h * 0.05,
+        width: w * 0.62,
+        height: h * 0.90,
+      };
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawAreas() {
+      // 左侧碎片区域轮廓
+      ctx.strokeStyle = "rgba(148,163,184,0.45)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(piecesArea.x, piecesArea.y, piecesArea.width, piecesArea.height);
+
+      // 右侧目标区域
+      ctx.strokeStyle = "rgba(248,250,252,0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boardArea.x, boardArea.y, boardArea.width, boardArea.height);
+
+      ctx.font = "11px -apple-system, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(148,163,184,0.9)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText("把碎片拖到这里，拼好童年的一整张照片", boardArea.x + boardArea.width / 2, boardArea.y + 4);
+    }
+
+    // 生成竖直切割线：从上到下的连续曲线
+    function generateVerticalCurves() {
+      const curves = []; // curves[j] = [{x,y}, ...] j:0..COLS
+      const totalSeg = ROWS * EDGE_SEGMENTS_PER_ROW;
+      const tileW = boardArea.width / COLS;
+      const maxDx = tileW * EDGE_JAG_FACTOR;
+
+      for (let j = 0; j <= COLS; j++) {
+        const arr = [];
+        const baseX = boardArea.x + j * tileW;
+        for (let k = 0; k <= totalSeg; k++) {
+          const t = k / totalSeg;
+          const y = boardArea.y + t * boardArea.height;
+
+          let offset = 0;
+          if (j > 0 && j < COLS) {
+            const noise = (Math.random() * 2 - 1); // -1 ~ 1
+            offset = noise * maxDx;
+          }
+          const x = baseX + offset;
+          arr.push({ x, y });
+        }
+        curves.push(arr);
+      }
+      return { curves, totalSeg };
+    }
+
+    function buildPiecePath(ctxLocal, piece) {
+      const pts = piece.pathPoints;
+      ctxLocal.beginPath();
+      ctxLocal.moveTo(pts[0].x + piece.tx, pts[0].y + piece.ty);
+      for (let i = 1; i < pts.length; i++) {
+        ctxLocal.lineTo(pts[i].x + piece.tx, pts[i].y + piece.ty);
+      }
+      ctxLocal.closePath();
+    }
+
+    function createPieces() {
+      pieces = [];
+      piecesPlaced = 0;
+      updateMoves();
+
+      // 重置滤镜淡出状态
+      revealProgress = 0;
+      revealing = false;
+      revealStartTime = null;
+
+      const tileW = boardArea.width / COLS;
+      const tileH = boardArea.height / ROWS;
+
+      const { curves } = generateVerticalCurves();
+      const segPerRow = EDGE_SEGMENTS_PER_ROW;
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const k0 = r * segPerRow;
+          const k1 = (r + 1) * segPerRow;
+
+          const leftCurve = curves[c];
+          const rightCurve = curves[c + 1];
+
+          const topY = boardArea.y + r * tileH;
+          const bottomY = boardArea.y + (r + 1) * tileH;
+
+          const pts = [];
+
+          // 左边界：沿着左边曲线从上到下
+          for (let k = k0; k <= k1; k++) {
+            pts.push({
+              x: leftCurve[k].x,
+              y: leftCurve[k].y
+            });
+          }
+
+          // 底边：右 -> 左，直线
+          pts.push({ x: rightCurve[k1].x, y: bottomY });
+          pts.push({ x: leftCurve[k1].x, y: bottomY });
+
+          // 右边界：从下到上
+          for (let k = k1; k >= k0; k--) {
+            pts.push({
+              x: rightCurve[k].x,
+              y: rightCurve[k].y
+            });
+          }
+
+          // 顶边：左 <- 右，直线
+          pts.push({ x: leftCurve[k0].x, y: topY });
+
+          const piece = {
+            row: r,
+            col: c,
+            pathPoints: pts,
+            tx: 0,
+            ty: 0,
+            placed: false,
+            bbox: {
+              minX: Math.min(...pts.map(p => p.x)),
+              maxX: Math.max(...pts.map(p => p.x)),
+              minY: Math.min(...pts.map(p => p.y)),
+              maxY: Math.max(...pts.map(p => p.y)),
+            }
+          };
+
+          pieces.push(piece);
+        }
+      }
+
+      // 左侧“堆叠”初始位置
+      const total = pieces.length;
+      const centerX = piecesArea.x + piecesArea.width * 0.55;
+      const centerY = piecesArea.y + piecesArea.height * 0.35;
+
+      pieces.forEach((p, i) => {
+        const w = p.bbox.maxX - p.bbox.minX;
+        const h = p.bbox.maxY - p.bbox.minY;
+        const baseTx = centerX - (p.bbox.minX + w / 2);
+        const baseTy = centerY - (p.bbox.minY + h / 2);
+
+        const dx = (i - total / 2) * 4 + (Math.random() - 0.5) * 6;
+        const dy = i * 4 + (Math.random() - 0.5) * 6;
+
+        p.tx = baseTx + dx;
+        p.ty = baseTy + dy;
+      });
+
+      // 打乱绘制顺序
+      for (let i = pieces.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+      }
+    }
+
+function drawPieces() {
+  pieces.forEach(p => {
+    ctx.save();
+    buildPiecePath(ctx, p);
+    ctx.clip();
+
+    const drawX = boardArea.x + p.tx;
+    const drawY = boardArea.y + p.ty;
+    const w = boardArea.width;
+    const h = boardArea.height;
+
+    // 1. 先画原图 —— 一开始就比较清晰
+    const baseAlpha = 0.85 + 0.15 * revealProgress; // 0.85 -> 1.0
+    ctx.globalAlpha = baseAlpha;
+    ctx.drawImage(
+      imgCanvas,
+      0, 0, IMG_CANVAS_SIZE, IMG_CANVAS_SIZE,
+      drawX, drawY, w, h
+    );
+    ctx.globalAlpha = 1;
+
+    // 2. 叠加“旧照片”滤镜（改得很轻，只是一点点怀旧味道）
+    if (revealProgress < 1) {
+      const overlayAlpha = (1 - revealProgress) * 0.35; // 0.35 -> 0
+      if (overlayAlpha > 0.01) {
+        // 更浅的牛皮纸色
+        ctx.globalAlpha = overlayAlpha;
+        ctx.fillStyle = "#d9c3a0";
+        ctx.fillRect(drawX, drawY, w, h);
+
+        // 暗角也减弱
+        const grd = ctx.createRadialGradient(
+          drawX + w / 2, drawY + h / 2, Math.min(w, h) / 5,
+          drawX + w / 2, drawY + h / 2, Math.max(w, h) / 1.15
+        );
+        grd.addColorStop(0, "rgba(0,0,0,0)");
+        grd.addColorStop(1, `rgba(0,0,0,${0.10 * overlayAlpha})`);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = grd;
+        ctx.fillRect(drawX, drawY, w, h);
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // 边框：未就位为青色，已就位为柔和金色
+    ctx.save();
+    buildPiecePath(ctx, p);
+    ctx.strokeStyle = p.placed
+      ? "rgba(253,224,71,0.95)"     // 柔和金色
+      : "rgba(56,189,248,0.9)";    // 青色
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+
+    function renderAll() {
+      clearCanvas();
+      drawAreas();
+      drawPieces();
+    }
+
+    function allPlaced() {
+      return piecesPlaced === pieces.length;
+    }
+
+    function pointerToCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      let clientX, clientY;
+
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      };
+    }
+
+    function buildPathForHitTest(p) {
+      ctx.beginPath();
+      const pts = p.pathPoints;
+      ctx.moveTo(pts[0].x + p.tx, pts[0].y + p.ty);
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x + p.tx, pts[i].y + p.ty);
+      }
+      ctx.closePath();
+    }
+
+    function onPointerDown(e) {
+      if (!running) return;
+      e.preventDefault();
+
+      const pos = pointerToCanvasPos(e);
+      const x = pos.x;
+      const y = pos.y;
+
+      for (let i = pieces.length - 1; i >= 0; i--) {
+        const p = pieces[i];
+        const bb = p.bbox;
+        const minX = bb.minX + p.tx - 20;
+        const maxX = bb.maxX + p.tx + 20;
+        const minY = bb.minY + p.ty - 20;
+        const maxY = bb.maxY + p.ty + 20;
+        if (x < minX || x > maxX || y < minY || y > maxY) continue;
+
+        buildPathForHitTest(p);
+        if (!ctx.isPointInPath(x, y)) continue;
+
+        currentPiece = p;
+        dragOffsetX = x - p.tx;
+        dragOffsetY = y - p.ty;
+
+        pieces.splice(i, 1);
+        pieces.push(currentPiece);
+
+        renderAll();
+        break;
+      }
+    }
+
+    function onPointerMove(e) {
+      if (!running) return;
+      if (!currentPiece) return;
+      e.preventDefault();
+
+      const pos = pointerToCanvasPos(e);
+      let tx = pos.x - dragOffsetX;
+      let ty = pos.y - dragOffsetY;
+
+      // 不让碎片完全拖出画布
+      const bb = currentPiece.bbox;
+      const w = bb.maxX - bb.minX;
+      const h = bb.maxY - bb.minY;
+      const margin = 10;
+
+      const minTx = -bb.minX + (-w + margin);
+      const maxTx = canvas.width - bb.maxX - margin;
+      const minTy = -bb.minY + (-h + margin);
+      const maxTy = canvas.height - bb.maxY - margin;
+
+      currentPiece.tx = Math.min(Math.max(tx, minTx), maxTx);
+      currentPiece.ty = Math.min(Math.max(ty, minTy), maxTy);
+
+      renderAll();
+    }
+
+    function onPointerUp(e) {
+      if (!running) return;
+      if (!currentPiece) return;
+      e.preventDefault();
+
+      const p = currentPiece;
+      currentPiece = null;
+
+      const centerDx = p.tx;
+      const centerDy = p.ty;
+      const dist = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+      const snapThreshold = Math.min(boardArea.width / COLS, boardArea.height / ROWS) * 0.35;
+
+      const wasPlaced = p.placed;
+
+      if (dist < snapThreshold) {
+        p.tx = 0;
+        p.ty = 0;
+        if (!wasPlaced) {
+          p.placed = true;
+          piecesPlaced++;
+          updateMoves();
+        }
+      } else {
+        if (wasPlaced) {
+          p.placed = false;
+          piecesPlaced--;
+          updateMoves();
+        }
+      }
+
+      renderAll();
+
+      if (allPlaced()) {
+        running = false;
+        stopTimer();
+        const used = parseFloat(timeEl.textContent);
+
+        // 启动滤镜淡出动画
+        revealProgress = 0;
+        revealing = true;
+        revealStartTime = null;
+
+        function animateReveal(timestamp) {
+          if (!revealing) return;
+          if (!revealStartTime) revealStartTime = timestamp;
+          const t = (timestamp - revealStartTime) / REVEAL_DURATION;
+          revealProgress = Math.min(1, t);
+          renderAll();
+
+          if (t < 1) {
+            requestAnimationFrame(animateReveal);
+          } else {
+            revealing = false;
+            revealProgress = 1;
+            renderAll();
+            setTimeout(() => {
+              alert(
+                `拼图完成！用时 ${used.toFixed(2)} 秒，共 ${piecesPlaced} 块碎片就位。\n\n` +
+                `谢谢你们见证我们的成长。`
+              );
+            }, 250);
+          }
+        }
+
+        requestAnimationFrame(animateReveal);
+      }
+    }
+
+    function attachEvents() {
+      canvas.addEventListener("mousedown", onPointerDown);
+      window.addEventListener("mousemove", onPointerMove);
+      window.addEventListener("mouseup", onPointerUp);
+
+      canvas.addEventListener("touchstart", onPointerDown, { passive: false });
+      window.addEventListener("touchmove", onPointerMove, { passive: false });
+      window.addEventListener("touchend", onPointerUp, { passive: false });
+      window.addEventListener("touchcancel", onPointerUp, { passive: false });
+    }
+
+    function initAfterImageLoaded() {
+      if (imageInitialized) return;
+      imageInitialized = true;
+
+      const iw = img.width;
+      const ih = img.height;
+      const scale = Math.min(IMG_CANVAS_SIZE / iw, IMG_CANVAS_SIZE / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (IMG_CANVAS_SIZE - dw) / 2;
+      const dy = (IMG_CANVAS_SIZE - dh) / 2;
+
+      imgCtx.fillStyle = "#ffffff";
+      imgCtx.fillRect(0, 0, IMG_CANVAS_SIZE, IMG_CANVAS_SIZE);
+      imgCtx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+
+      layoutCanvas();
+      clearCanvas();
+      drawAreas();
+      createPieces();
+      renderAll();
+
+      resetTimer();
+      startTimer();
+      attachEvents();
+    }
+
+    img.onload = initAfterImageLoaded;
+
+    img.onerror = () => {
+      clearCanvas();
+      ctx.fillStyle = "#f97316";
+      ctx.font = "14px -apple-system, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("图片加载失败，请检查 IMAGE_SRC 路径。", canvas.width / 2, canvas.height / 2);
+    };
+
+    img.src = IMAGE_SRC;
+    if (img.complete) {
+      initAfterImageLoaded();
+    }
+
+    window.addEventListener("load", () => {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.width;
+      if (imageInitialized) {
+        layoutCanvas();
+        createPieces();
+        renderAll();
+        resetTimer();
+        startTimer();
+      } else {
+        clearCanvas();
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "14px -apple-system, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("正在加载照片，请稍候…", canvas.width / 2, canvas.height / 2);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (!imageInitialized) return;
+      layoutCanvas();
+      createPieces();
+      renderAll();
+      resetTimer();
+      startTimer();
+    });
+  </script>
+</body>
+</html>
