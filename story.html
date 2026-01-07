@@ -9,12 +9,15 @@
 body{ margin:0; background:#000; color:#e5e7eb; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; overflow:hidden; }
 
 .bg{ position:fixed; inset:0; z-index:0; background:#000; }
+
+/* ✅ 程序1关键：完整显示（允许黑边），手机竖屏不会裁剪 */
 #bgVideo{
   position:absolute; inset:0;
   width:100%; height:100%;
-  object-fit: contain;      /* ✅ 关键：完整显示，允许黑边 */
+  object-fit: contain;
   background:#000;
 }
+
 .shade{ position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,0.04), rgba(0,0,0,0.30)); }
 
 .chapter{
@@ -81,45 +84,37 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
   font-size:13px;
   display:none;
 }
-  /* ✅ 竖屏优化：视频占上半部分，下面留出 UI 空间 */
+
+/* ✅ 程序1关键：竖屏优化（让16:9在手机上不“看起来有问题”） */
 @media (orientation: portrait){
   :root{
     --vhVideo: 62vh;                 /* 视频高度，可调 55–75vh */
-    --pad: clamp(10px, 3vw, 16px);   /* 手机边距自适应 */
+    --pad: clamp(10px, 3vw, 16px);
   }
-
-  .bg{
-    position:fixed; inset:0; background:#000;
-  }
-
-  /* 视频区域：上半屏 */
+  .bg{ position:fixed; inset:0; background:#000; }
   #bgVideo{
     position:absolute;
     left:0; top:0;
     width:100vw;
     height: var(--vhVideo);
-    object-fit: contain;     /* 竖屏完整显示，不裁剪 */
+    object-fit: contain;
     background:#000;
   }
-
   .shade{
     position:absolute;
     left:0; top:0;
     width:100vw;
     height: var(--vhVideo);
   }
-
-  /* ✅ 关键：把标题/计分板“钉”在视频区域内 */
   .chapter{
     top: var(--pad);
     left: var(--pad);
     z-index: 8;
-    font-size: clamp(18px, 5vw, 26px); /* 竖屏标题别太大 */
+    font-size: clamp(18px, 5vw, 26px);
   }
   .chapter small{
     font-size: clamp(11px, 3.2vw, 14px);
   }
-
   .hud{
     top: var(--pad);
     right: var(--pad);
@@ -128,25 +123,19 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
     gap: 8px;
     border-radius: 12px;
   }
-  .scoreBox, .timerBox{
-    font-size: 12px;
-  }
+  .scoreBox, .timerBox{ font-size: 12px; }
   .hud button{
     padding: 6px 10px;
     font-size: 12px;
   }
-
-  /* ✅ 下面留的 UI 区域（如果你后面要放别的） */
-  /* 你现在没放内容也没关系，不影响。 */
 }
-
-
 </style>
 </head>
 <body>
 
 <div class="bg">
-  <video id="bgVideo" playsinline muted preload="auto"></video>
+  <!-- ✅ 程序1关键：微信/iOS inline 播放兼容 -->
+  <video id="bgVideo" playsinline webkit-playsinline x5-playsinline muted preload="auto"></video>
   <div class="shade"></div>
 </div>
 
@@ -181,9 +170,8 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 const STORE = "wedding_game_v2";
 
 /**
- * ⚠️ 重要：上线到 GitHub Pages / Cloudflare（Linux）会区分大小写。
- * 下面我统一用了小写 .mp4 / .png / .mp3。
- * 你需要把真实文件名也统一成小写，否则会 404。
+ * ⚠️ GitHub Pages（Linux）区分大小写：文件名必须完全一致。
+ * 建议全部改成小写（含 .mp4/.png/.mp3）。
  */
 const CHAPTERS = [
   {
@@ -202,7 +190,6 @@ const CHAPTERS = [
         img: "xuanbanzhang.png",
         aspect: "2048/1152",
         hotspots: [
-          // 你可按需改成你自己的 right/wrong 视频名
           { score: 0,  left:10, top:63, width:36, height:18, nextVideo: "wrong_selection.mp4" },
           { score: 10, left:55, top:63, width:36, height:18, nextVideo: "right_selection.mp4" }
         ]
@@ -211,50 +198,43 @@ const CHAPTERS = [
     nextChapterId: "ch2"
   },
 
- {
-  id: "ch2",
-  title: "第二章 · 相识",
-  en: "Getting to Know You",
-  bgm: "bgm_ch2.mp3",
-  videos: [
-    "mailaji.mp4",
-    "liulian.mp4",
-    "langsong.mp4"
-  ],
-  questions: [
-    // ✅ Q1：mailaji 后 — jiasai.png
-    {
-      id: "q_ch2_jiasai",
-      after: "mailaji.mp4",
-      img: "trash_selling1.png",
-      aspect: "2048/1152",
-      hotspots: [
+  {
+    id: "ch2",
+    title: "第二章 · 相识",
+    en: "Getting to Know You",
+    bgm: "bgm_ch2.mp3",
+    videos: ["mailaji.mp4","liulian.mp4","langsong.mp4"],
+    questions: [
+      {
+        id: "q_ch2_jiasai",
+        after: "mailaji.mp4",
+        img: "trash_selling1.png",
+        aspect: "2048/1152",
+        hotspots: [
           { score: 0,  left:10, top:63, width:36, height:18, nextVideo: "wrong_selection.mp4" },
           { score: 10, left:55, top:63, width:36, height:18, nextVideo: "right_selection.mp4" }
-      ]
-    },
-
-    // ✅ Q2：langsong 后 — trash_selling1.png
-    {
-      id: "q_ch2_trash_selling",
-      after: "langsong.mp4",
-      img: "jiasai.png",
-      aspect: "2048/1152",
-      hotspots: [
-        { score: 10,  left: 0,  top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" },
-        { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" }
-      ]
-    }
-  ],
-  nextChapterId: "ch3"
-},
+        ]
+      },
+      {
+        id: "q_ch2_trash_selling",
+        after: "langsong.mp4",
+        img: "jiasai.png",
+        aspect: "2048/1152",
+        hotspots: [
+          { score: 10, left: 0,  top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" },
+          { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" }
+        ]
+      }
+    ],
+    nextChapterId: "ch3"
+  },
 
   {
     id: "ch3",
     title: "第三章 · 各行",
     en: "Finding Our Own Paths",
     bgm: "bgm_ch3.mp3",
-    videos: ["gexing_merge13.mp4", "gexing_merge15.mp4" ],
+    videos: ["gexing_merge13.mp4","gexing_merge15.mp4"],
     questions: [
       {
         id: "q_ch3_1_work",
@@ -262,9 +242,9 @@ const CHAPTERS = [
         img: "gongzuo.png",
         aspect: "2048/1188",
         hotspots: [
-          { score: 0,  left:52.0, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" }, // A
-          { score: 10,left:63.5, top:44.0, width:10.0, height:18.0, nextVideo: "right_selection.mp4" }, // B
-          { score: 0,  left:75.5, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" }  // C
+          { score: 0,  left:52.0, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" },
+          { score: 10, left:63.5, top:44.0, width:10.0, height:18.0, nextVideo: "right_selection.mp4" },
+          { score: 0,  left:75.5, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" }
         ]
       }
     ],
@@ -276,10 +256,7 @@ const CHAPTERS = [
     title: "第四章 · 再会",
     en: "Reunion",
     bgm: "bgm_ch4.mp3",
-    videos: [
-      "zaihui_merge11.mp4",
-      "zaihui5.mp4"
-    ],
+    videos: ["zaihui_merge11.mp4","zaihui5.mp4"],
     questions: [
       {
         id: "q_ch4_beibao",
@@ -287,11 +264,11 @@ const CHAPTERS = [
         img: "beibao.png",
         aspect: "2048/1143",
         hotspots: [
-          { score: 0,  left:  4.3, top: 73.8, width: 12.4, height: 25.6, nextVideo: "wrong_selection.mp4" }, // A
-          { score: 0,  left: 24.2, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" }, // B
-          { score: 0, left: 43.8, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" }, // C
-          { score: 30,  left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: "right_selection.mp4" }, // D
-          { score: 0,  left: 81.0, top: 73.9, width: 11.9, height: 25.5, nextVideo: "wrong_selection.mp4" }  // E
+          { score: 0,  left:  4.3, top: 73.8, width: 12.4, height: 25.6, nextVideo: "wrong_selection.mp4" },
+          { score: 0,  left: 24.2, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" },
+          { score: 0,  left: 43.8, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" },
+          { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: "right_selection.mp4" },
+          { score: 0,  left: 81.0, top: 73.9, width: 11.9, height: 25.5, nextVideo: "wrong_selection.mp4" }
         ]
       }
     ],
@@ -303,11 +280,7 @@ const CHAPTERS = [
     title: "第五章 · 向前",
     en: "Moving Forward",
     bgm: "bgm_ch5.mp3",
-    videos: [
-      "xiangqian_merge.mp4",
-      "xiangqian11.mp4",
-      "xiangqian5.mp4"
-    ],
+    videos: ["xiangqian_merge.mp4","xiangqian11.mp4","xiangqian5.mp4"],
     questions: [
       {
         id: "q_ch5_xiangqian_guess",
@@ -315,8 +288,8 @@ const CHAPTERS = [
         img: "yaoshi.png",
         aspect: "2048/1152",
         hotspots: [
-          { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" }, // A：男生
-          { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" }  // B：女生
+          { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" },
+          { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" }
         ]
       }
     ],
@@ -328,9 +301,7 @@ const CHAPTERS = [
     title: "第六章 · 经年",
     en: "Years Apart",
     bgm: "bgm_ch6.mp3",
-    videos: [
-      "jingnian_merge.mp4"
-    ],
+    videos: ["jingnian_merge.mp4"],
     questions: [],
     nextChapterId: "ch7"
   },
@@ -340,7 +311,7 @@ const CHAPTERS = [
     title: "第七章 · 此刻",
     en: "This Moment",
     bgm: "bgm_ch7.mp3",
-    videos: [ "cike1.mp4","cike2.mp4","cike3.mp4" ],
+    videos: ["cike1.mp4","cike2.mp4","cike3.mp4"],
     questions: [],
     nextChapterId: null
   }
@@ -367,25 +338,18 @@ const toast = document.getElementById("toast");
 /* 状态 */
 let curChapter = null;
 let curVideoIndex = 0;
-
-// endHandled：防重复处理 ended
 let endHandled = false;
-
-// blockEnd：题图打开/关闭过程中，禁止 handleEnd 再跑
 let blockEnd = false;
 
-// ===== 分支插播（答题后插入一段视频，再回到主线）=====
+/* 分支插播 */
 let injectedActive = false;
 let injectedReturnIndex = 0;
 
 function playInjected(videoName, returnIndex){
   injectedActive = true;
   injectedReturnIndex = returnIndex;
-
-  // 插播视频也要重置 ended 防抖
   blockEnd = false;
   endHandled = false;
-
   bgVideo.src = videoName;
   bgVideo.load();
 }
@@ -406,9 +370,9 @@ function showToast(msg, ms=1400){
   setTimeout(()=> toast.style.display="none", ms);
 }
 
-/* ===== 全程计时器 ===== */
-const TIMER_START_KEY = "timerStart";   // epoch ms
-const TIMER_STOP_KEY  = "timerStop";    // epoch ms (停止时刻)
+/* timer */
+const TIMER_START_KEY = "timerStart";
+const TIMER_STOP_KEY  = "timerStop";
 let timerTick = null;
 
 function fmtTime(ms){
@@ -430,10 +394,7 @@ function isTimerRunning(){
 function updateTimerUI(){
   const st = getTimerStart();
   const sp = getTimerStop();
-  if (!st){
-    timerEl.textContent = "00:00";
-    return;
-  }
+  if (!st){ timerEl.textContent = "00:00"; return; }
   const now = Date.now();
   const elapsed = (sp>0 ? (sp - st) : (now - st));
   timerEl.textContent = fmtTime(elapsed);
@@ -441,12 +402,10 @@ function updateTimerUI(){
 function startGlobalTimerOnce(){
   const st = getTimerStart();
   const sp = getTimerStop();
-  if (st > 0) return;  // 已启动过（或已结束）
+  if (st > 0) return;
   if (sp > 0) return;
-
   set(TIMER_START_KEY, Date.now());
   set(TIMER_STOP_KEY, 0);
-
   if (timerTick) clearInterval(timerTick);
   timerTick = setInterval(updateTimerUI, 250);
   updateTimerUI();
@@ -454,16 +413,14 @@ function startGlobalTimerOnce(){
 function resumeTimerIfNeeded(){
   if (timerTick) clearInterval(timerTick);
   timerTick = null;
-
   if (isTimerRunning()){
     timerTick = setInterval(updateTimerUI, 250);
   }
   updateTimerUI();
 }
 function stopGlobalTimer(){
-  if (!getTimerStart()) return;     // 没启动过
-  if (getTimerStop() > 0) return;   // 已停止过
-
+  if (!getTimerStart()) return;
+  if (getTimerStop() > 0) return;
   set(TIMER_STOP_KEY, Date.now());
   if (timerTick) clearInterval(timerTick);
   timerTick = null;
@@ -474,15 +431,13 @@ function stopGlobalTimer(){
 function findChapterById(id){
   return CHAPTERS.find(c => c.id === id) || null;
 }
-
 function setChapterUI(ch){
-  // childNodes[0] 是文本节点（你原写法）
   chapterTitle.childNodes[0].nodeValue = ch.title + "\n  ";
   chapterEn.textContent = ch.en;
   gateH2.textContent = `开始 ${ch.title}`;
 }
 
-/* 音乐 */
+/* bgm */
 function playBgmForChapter(ch){
   bgm.pause();
   bgm.currentTime = 0;
@@ -492,11 +447,9 @@ function playBgmForChapter(ch){
   if (p && typeof p.catch === "function") p.catch(()=>{});
 }
 
-/* 视频 */
+/* video */
 function loadVideo(i){
   if (!curChapter) return;
-
-  // ✅ 进入新视频前，解除 block
   blockEnd = false;
   endHandled = false;
 
@@ -505,7 +458,6 @@ function loadVideo(i){
     gotoNextChapter();
     return;
   }
-
   bgVideo.src = curChapter.videos[curVideoIndex];
   bgVideo.load();
 }
@@ -520,7 +472,7 @@ function currentVideoName(){
   return curChapter.videos[curVideoIndex] || "";
 }
 
-/* 题图 */
+/* question */
 let activeQuestion = null;
 
 function clearHotspots(){
@@ -528,13 +480,11 @@ function clearHotspots(){
 }
 
 function openQuestion(q){
-  // ✅ 打开题图时：锁住 ended 逻辑 + 暂停视频
   blockEnd = true;
   endHandled = true;
   try{ bgVideo.pause(); }catch(e){}
 
   activeQuestion = q;
-
   qImg.src = q.img;
   imgStage.style.aspectRatio = q.aspect || "2048/1152";
 
@@ -547,7 +497,7 @@ function openQuestion(q){
     div.style.top    = (h.top    ?? 0) + "%";
     div.style.width  = (h.width  ?? 0) + "%";
     div.style.height = (h.height ?? 0) + "%";
-    div.onclick = () => answerQuestion(h); // ✅ 传整个 h
+    div.onclick = () => answerQuestion(h);
     imgStage.appendChild(div);
   });
 
@@ -557,7 +507,6 @@ function openQuestion(q){
 function answerQuestion(h){
   if (!activeQuestion || !curChapter) return;
 
-  // ✅ 点击后立即锁住，避免 timeupdate/ended 再触发 handleEnd
   blockEnd = true;
   endHandled = true;
 
@@ -572,24 +521,21 @@ function answerQuestion(h){
   imgLayer.style.display = "none";
   activeQuestion = null;
 
-  const returnIndex = curVideoIndex + 1; // 主线下一段（例如 cuoyiban1.mp4）
+  const returnIndex = curVideoIndex + 1;
 
-  // ✅ 若配置了分支视频：先插播，再回到主线
   if (branchVideo){
     playInjected(branchVideo, returnIndex);
     return;
   }
-
   loadVideo(returnIndex);
 }
 
-/* ended 处理 */
+/* ended */
 function handleEnd(){
   if (blockEnd) return;
   if (endHandled) return;
   endHandled = true;
 
-  // ✅ 插播结束回主线
   if (injectedActive){
     injectedActive = false;
     loadVideo(injectedReturnIndex);
@@ -615,7 +561,7 @@ bgVideo.addEventListener("timeupdate", ()=>{
   if (bgVideo.duration - bgVideo.currentTime < 0.18) handleEnd();
 });
 
-/* 章节切换 */
+/* chapter */
 function startChapterById(chId){
   const ch = findChapterById(chId);
   if (!ch){
@@ -623,13 +569,11 @@ function startChapterById(chId){
     return;
   }
 
-  // ✅ 切章必须清状态
   blockEnd = false;
   endHandled = false;
   activeQuestion = null;
   imgLayer.style.display = "none";
 
-  // 防止插播残留
   injectedActive = false;
   injectedReturnIndex = 0;
 
@@ -644,17 +588,13 @@ function startChapterById(chId){
 function gotoNextChapter(){
   if (!curChapter) return;
 
-if (!curChapter.nextChapterId){
-  stopGlobalTimer();
-
-  // ✅ 不显示任何 gate，不弹窗，不遮挡
-  try{ bgVideo.pause(); }catch(e){}
-  try{ bgm.pause(); }catch(e){}
-
-  return;
-}
-
-
+  if (!curChapter.nextChapterId){
+    stopGlobalTimer();
+    // ✅ 结束不遮挡（按你程序2当前设定）
+    try{ bgVideo.pause(); }catch(e){}
+    try{ bgm.pause(); }catch(e){}
+    return;
+  }
 
   const next = findChapterById(curChapter.nextChapterId);
   if (!next){
@@ -677,7 +617,7 @@ if (!curChapter.nextChapterId){
   showToast(`${curChapter.title} 完成，进入 ${next.title}`, 1600);
 }
 
-/* 按钮 */
+/* reset */
 document.getElementById("btnReset").onclick = ()=>{
   if(!confirm("清空本机积分、作答记录与计时？")) return;
   Object.keys(localStorage).forEach(k=>{
@@ -693,8 +633,6 @@ resumeTimerIfNeeded();
 const btnStart = document.getElementById("btnStart");
 btnStart.onclick = ()=>{
   gate.style.display = "none";
-
-  // ✅ 第一次开始即启动全程计时（只会执行一次）
   startGlobalTimerOnce();
 
   const last = get("currentChapterId");
