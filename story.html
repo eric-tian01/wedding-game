@@ -10,7 +10,6 @@ body{ margin:0; background:#000; color:#e5e7eb; font-family:-apple-system,BlinkM
 
 .bg{ position:fixed; inset:0; z-index:0; background:#000; }
 
-/* ✅ 程序1关键：完整显示（允许黑边），手机竖屏不会裁剪 */
 #bgVideo{
   position:absolute; inset:0;
   width:100%; height:100%;
@@ -85,48 +84,23 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
   display:none;
 }
 
-/* ✅ 程序1关键：竖屏优化（让16:9在手机上不“看起来有问题”） */
 @media (orientation: portrait){
   :root{
-    --vhVideo: 62vh;                 /* 视频高度，可调 55–75vh */
+    --vhVideo: 62vh;
     --pad: clamp(10px, 3vw, 16px);
   }
-  .bg{ position:fixed; inset:0; background:#000; }
-  #bgVideo{
-    position:absolute;
-    left:0; top:0;
-    width:100vw;
-    height: var(--vhVideo);
-    object-fit: contain;
-    background:#000;
-  }
-  .shade{
-    position:absolute;
-    left:0; top:0;
+  #bgVideo, .shade{
     width:100vw;
     height: var(--vhVideo);
   }
   .chapter{
     top: var(--pad);
     left: var(--pad);
-    z-index: 8;
     font-size: clamp(18px, 5vw, 26px);
-  }
-  .chapter small{
-    font-size: clamp(11px, 3.2vw, 14px);
   }
   .hud{
     top: var(--pad);
     right: var(--pad);
-    z-index: 8;
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 12px;
-  }
-  .scoreBox, .timerBox{ font-size: 12px; }
-  .hud button{
-    padding: 6px 10px;
-    font-size: 12px;
   }
 }
 </style>
@@ -134,7 +108,6 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 <body>
 
 <div class="bg">
-  <!-- ✅ 程序1关键：微信/iOS inline 播放兼容 -->
   <video id="bgVideo" playsinline webkit-playsinline x5-playsinline muted preload="auto"></video>
   <div class="shade"></div>
 </div>
@@ -158,7 +131,7 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 
 <div class="gate" id="gate">
   <div class="gateCard">
-    <h2 id="gateH2">开始第 1 章</h2>
+    <h2 id="gateH2">开始游戏</h2>
     <button id="btnStart">开始 ▶</button>
   </div>
 </div>
@@ -168,198 +141,169 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 
 <script>
 const STORE = "wedding_game_v2";
+// 阿里云 OSS 基础路径
+const BASE_URL = "https://haibing-wedding-video.oss-cn-chengdu.aliyuncs.com/";
 
-/**
- * ⚠️ GitHub Pages（Linux）区分大小写：文件名必须完全一致。
- * 建议全部改成小写（含 .mp4/.png/.mp3）。
- */
 const CHAPTERS = [
   {
     id: "ch1",
     title: "第一章 · 初逢",
     en: "The First Meeting",
-    bgm: "bgm_ch1.mp3",
+    bgm: BASE_URL + "bgm_ch1.mp3",
     videos: [
-      "chufeng_merge.mp4",
-      "cuoyiban1.mp4"
+      BASE_URL + "chufeng_merge.mp4",
+      BASE_URL + "cuoyiban1.mp4"
     ],
     questions: [
       {
         id: "q_trash_sell",
-        after: "chufeng_merge.mp4",
-        img: "xuanbanzhang.png",
+        after: BASE_URL + "chufeng_merge.mp4",
+        img: BASE_URL + "xuanbanzhang.png",
         aspect: "2048/1152",
         hotspots: [
-          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: "wrong_selection.mp4" },
-          { score: 10, left:55, top:63, width:36, height:18, nextVideo: "right_selection.mp4" }
+          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 10, left:55, top:63, width:36, height:18, nextVideo: BASE_URL + "right_selection.mp4" }
         ]
       }
     ],
     nextChapterId: "ch2"
   },
-
   {
     id: "ch2",
     title: "第二章 · 相识",
     en: "Getting to Know You",
-    bgm: "bgm_ch2.mp3",
-    videos: ["mailaji.mp4","liulian.mp4","langsong.mp4"],
+    bgm: BASE_URL + "bgm_ch2.mp3",
+    videos: [BASE_URL + "mailaji.mp4", BASE_URL + "liulian.mp4", BASE_URL + "langsong.mp4"],
     questions: [
       {
         id: "q_ch2_jiasai",
-        after: "mailaji.mp4",
-        img: "trash_selling1.png",
+        after: BASE_URL + "mailaji.mp4",
+        img: BASE_URL + "trash_selling1.png",
         aspect: "2048/1152",
         hotspots: [
-          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: "wrong_selection.mp4" },
-          { score: 10, left:55, top:63, width:36, height:18, nextVideo: "right_selection.mp4" }
+          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 10, left:55, top:63, width:36, height:18, nextVideo: BASE_URL + "right_selection.mp4" }
         ]
       },
       {
         id: "q_ch2_trash_selling",
-        after: "langsong.mp4",
-        img: "jiasai.png",
+        after: BASE_URL + "langsong.mp4",
+        img: BASE_URL + "jiasai.png",
         aspect: "2048/1152",
         hotspots: [
-          { score: 10, left: 0,  top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" },
-          { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" }
+          { score: 10, left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" },
+          { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" }
         ]
       }
     ],
     nextChapterId: "ch3"
   },
-
   {
     id: "ch3",
     title: "第三章 · 各行",
     en: "Finding Our Own Paths",
-    bgm: "bgm_ch3.mp3",
-    videos: ["gexing_merge13.mp4","gexing_merge15.mp4"],
+    bgm: BASE_URL + "bgm_ch3.mp3",
+    videos: [BASE_URL + "gexing_merge13.mp4", BASE_URL + "gexing_merge15.mp4"],
     questions: [
       {
         id: "q_ch3_1_work",
-        after: "gexing_merge13.mp4",
-        img: "gongzuo.png",
+        after: BASE_URL + "gexing_merge13.mp4",
+        img: BASE_URL + "gongzuo.png",
         aspect: "2048/1188",
         hotspots: [
-          { score: 0,  left:52.0, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" },
-          { score: 10, left:63.5, top:44.0, width:10.0, height:18.0, nextVideo: "right_selection.mp4" },
-          { score: 0,  left:75.5, top:44.0, width:10.0, height:18.0, nextVideo: "wrong_selection.mp4" }
+          { score: 0,  left:52.0, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 10, left:63.5, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "right_selection.mp4" },
+          { score: 0,  left:75.5, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "wrong_selection.mp4" }
         ]
       }
     ],
     nextChapterId: "ch4"
   },
-
   {
     id: "ch4",
     title: "第四章 · 再会",
     en: "Reunion",
-    bgm: "bgm_ch4.mp3",
-    videos: ["zaihui_merge11.mp4","zaihui5.mp4"],
+    bgm: BASE_URL + "bgm_ch4.mp3",
+    videos: [BASE_URL + "zaihui_merge11.mp4", BASE_URL + "zaihui5.mp4"],
     questions: [
       {
         id: "q_ch4_beibao",
-        after: "zaihui_merge11.mp4",
-        img: "beibao.png",
+        after: BASE_URL + "zaihui_merge11.mp4",
+        img: BASE_URL + "beibao.png",
         aspect: "2048/1143",
         hotspots: [
-          { score: 0,  left:  4.3, top: 73.8, width: 12.4, height: 25.6, nextVideo: "wrong_selection.mp4" },
-          { score: 0,  left: 24.2, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" },
-          { score: 0,  left: 43.8, top: 73.9, width: 12.3, height: 25.5, nextVideo: "wrong_selection.mp4" },
-          { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: "right_selection.mp4" },
-          { score: 0,  left: 81.0, top: 73.9, width: 11.9, height: 25.5, nextVideo: "wrong_selection.mp4" }
+          { score: 0,  left: 4.3, top: 73.8, width: 12.4, height: 25.6, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 0,  left: 24.2, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 0,  left: 43.8, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "right_selection.mp4" },
+          { score: 0,  left: 81.0, top: 73.9, width: 11.9, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" }
         ]
       }
     ],
     nextChapterId: "ch5"
   },
-
   {
     id: "ch5",
     title: "第五章 · 向前",
     en: "Moving Forward",
-    bgm: "bgm_ch5.mp3",
-    videos: ["xiangqian_merge.mp4","xiangqian11.mp4","xiangqian5.mp4"],
+    bgm: BASE_URL + "bgm_ch5.mp3",
+    videos: [BASE_URL + "xiangqian_merge.mp4", BASE_URL + "xiangqian11.mp4", BASE_URL + "xiangqian5.mp4"],
     questions: [
       {
         id: "q_ch5_xiangqian_guess",
-        after: "xiangqian_merge.mp4",
-        img: "yaoshi.png",
+        after: BASE_URL + "xiangqian_merge.mp4",
+        img: BASE_URL + "yaoshi.png",
         aspect: "2048/1152",
         hotspots: [
-          { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: "wrong_selection.mp4" },
-          { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: "right_selection.mp4" }
+          { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" }
         ]
       }
     ],
     nextChapterId: "ch6"
   },
-
   {
     id: "ch6",
     title: "第六章 · 经年",
     en: "Years Apart",
-    bgm: "bgm_ch6.mp3",
-    videos: ["jingnian_merge.mp4"],
+    bgm: BASE_URL + "bgm_ch6.mp3",
+    videos: [BASE_URL + "jingnian_merge.mp4"],
     questions: [],
     nextChapterId: "ch7"
   },
-
   {
     id: "ch7",
     title: "第七章 · 此刻",
     en: "This Moment",
-    bgm: "bgm_ch7.mp3",
-    videos: ["cike1.mp4","cike2.mp4","cike3.mp4"],
+    bgm: BASE_URL + "bgm_ch7.mp3",
+    videos: [BASE_URL + "cike1.mp4", BASE_URL + "cike2.mp4", BASE_URL + "cike3.mp4"],
     questions: [],
     nextChapterId: null
   }
 ];
 
-/* DOM */
+/* 核心逻辑 */
 const bgVideo = document.getElementById("bgVideo");
 const bgm = document.getElementById("bgm");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-
 const chapterTitle = document.getElementById("chapterTitle");
 const chapterEn = document.getElementById("chapterEn");
-
 const gate = document.getElementById("gate");
 const gateH2 = document.getElementById("gateH2");
-
 const imgLayer = document.getElementById("imgLayer");
 const imgStage = document.getElementById("imgStage");
 const qImg = document.getElementById("qImg");
-
 const toast = document.getElementById("toast");
 
-/* 状态 */
-let curChapter = null;
-let curVideoIndex = 0;
-let endHandled = false;
-let blockEnd = false;
+let curChapter = null, curVideoIndex = 0, endHandled = false, blockEnd = false;
+let injectedActive = false, injectedReturnIndex = 0;
 
-/* 分支插播 */
-let injectedActive = false;
-let injectedReturnIndex = 0;
-
-function playInjected(videoName, returnIndex){
-  injectedActive = true;
-  injectedReturnIndex = returnIndex;
-  blockEnd = false;
-  endHandled = false;
-  bgVideo.src = videoName;
-  bgVideo.load();
-}
-
-/* storage */
+/* 存储辅助 */
 function get(k){ return localStorage.getItem(`${STORE}:${k}`); }
 function set(k,v){ localStorage.setItem(`${STORE}:${k}`, String(v)); }
 function loadScore(){ return Number(get("score") || 0); }
 function saveScore(v){ set("score", v); scoreEl.textContent = v; }
-
 function answeredKey(chId, qid){ return `answered:${chId}:${qid}`; }
 function isAnswered(chId, qid){ return get(answeredKey(chId, qid)) === "1"; }
 function markAnswered(chId, qid){ set(answeredKey(chId, qid), "1"); }
@@ -370,274 +314,116 @@ function showToast(msg, ms=1400){
   setTimeout(()=> toast.style.display="none", ms);
 }
 
-/* timer */
-const TIMER_START_KEY = "timerStart";
-const TIMER_STOP_KEY  = "timerStop";
+/* 计时器 */
 let timerTick = null;
-
-function fmtTime(ms){
-  ms = Math.max(0, ms|0);
-  const s = Math.floor(ms/1000);
-  const hh = Math.floor(s/3600);
-  const mm = Math.floor((s%3600)/60);
-  const ss = s%60;
-  if (hh > 0) return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-  return `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-}
-function getTimerStart(){ return Number(get(TIMER_START_KEY) || 0); }
-function getTimerStop(){  return Number(get(TIMER_STOP_KEY)  || 0); }
-function isTimerRunning(){
-  const st = getTimerStart();
-  const sp = getTimerStop();
-  return st > 0 && sp === 0;
-}
 function updateTimerUI(){
-  const st = getTimerStart();
-  const sp = getTimerStop();
+  const st = Number(get("timerStart") || 0);
+  const sp = Number(get("timerStop") || 0);
   if (!st){ timerEl.textContent = "00:00"; return; }
-  const now = Date.now();
-  const elapsed = (sp>0 ? (sp - st) : (now - st));
-  timerEl.textContent = fmtTime(elapsed);
-}
-function startGlobalTimerOnce(){
-  const st = getTimerStart();
-  const sp = getTimerStop();
-  if (st > 0) return;
-  if (sp > 0) return;
-  set(TIMER_START_KEY, Date.now());
-  set(TIMER_STOP_KEY, 0);
-  if (timerTick) clearInterval(timerTick);
-  timerTick = setInterval(updateTimerUI, 250);
-  updateTimerUI();
-}
-function resumeTimerIfNeeded(){
-  if (timerTick) clearInterval(timerTick);
-  timerTick = null;
-  if (isTimerRunning()){
-    timerTick = setInterval(updateTimerUI, 250);
-  }
-  updateTimerUI();
-}
-function stopGlobalTimer(){
-  if (!getTimerStart()) return;
-  if (getTimerStop() > 0) return;
-  set(TIMER_STOP_KEY, Date.now());
-  if (timerTick) clearInterval(timerTick);
-  timerTick = null;
-  updateTimerUI();
+  const elapsed = (sp>0 ? (sp - st) : (Date.now() - st));
+  const s = Math.floor(elapsed/1000);
+  const mm = Math.floor(s/60);
+  const ss = s%60;
+  timerEl.textContent = `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
 }
 
-/* helpers */
-function findChapterById(id){
-  return CHAPTERS.find(c => c.id === id) || null;
-}
-function setChapterUI(ch){
-  chapterTitle.childNodes[0].nodeValue = ch.title + "\n  ";
-  chapterEn.textContent = ch.en;
-  gateH2.textContent = `开始 ${ch.title}`;
-}
-
-/* bgm */
-function playBgmForChapter(ch){
-  bgm.pause();
-  bgm.currentTime = 0;
-  bgm.src = ch.bgm;
-  bgm.volume = 0.4;
-  const p = bgm.play();
-  if (p && typeof p.catch === "function") p.catch(()=>{});
-}
-
-/* video */
+/* 播放逻辑 */
 function loadVideo(i){
   if (!curChapter) return;
-  blockEnd = false;
-  endHandled = false;
-
+  blockEnd = false; endHandled = false;
   curVideoIndex = i;
   if (curVideoIndex >= curChapter.videos.length){
-    gotoNextChapter();
-    return;
+    gotoNextChapter(); return;
   }
   bgVideo.src = curChapter.videos[curVideoIndex];
   bgVideo.load();
 }
 
-bgVideo.addEventListener("canplay", ()=>{
-  const p = bgVideo.play();
-  if (p && typeof p.catch === "function") p.catch(()=>{});
-});
+bgVideo.addEventListener("canplay", () => bgVideo.play().catch(()=>{}));
 
-function currentVideoName(){
-  if (!curChapter) return "";
-  return curChapter.videos[curVideoIndex] || "";
-}
-
-/* question */
-let activeQuestion = null;
-
-function clearHotspots(){
-  imgStage.querySelectorAll(".hotspot").forEach(n => n.remove());
-}
-
-function openQuestion(q){
-  blockEnd = true;
-  endHandled = true;
-  try{ bgVideo.pause(); }catch(e){}
-
-  activeQuestion = q;
-  qImg.src = q.img;
-  imgStage.style.aspectRatio = q.aspect || "2048/1152";
-
-  clearHotspots();
-  (q.hotspots || []).forEach((h) => {
-    const div = document.createElement("div");
-    div.className = "hotspot";
-    div.dataset.score = String(h.score || 0);
-    div.style.left   = (h.left   ?? 0) + "%";
-    div.style.top    = (h.top    ?? 0) + "%";
-    div.style.width  = (h.width  ?? 0) + "%";
-    div.style.height = (h.height ?? 0) + "%";
-    div.onclick = () => answerQuestion(h);
-    imgStage.appendChild(div);
-  });
-
-  imgLayer.style.display = "flex";
-}
-
-function answerQuestion(h){
-  if (!activeQuestion || !curChapter) return;
-
-  blockEnd = true;
-  endHandled = true;
-
-  const addScore = Number((h && h.score) || 0);
-  const branchVideo = (h && h.nextVideo) ? String(h.nextVideo) : "";
-
-  if (!isAnswered(curChapter.id, activeQuestion.id)){
-    saveScore(loadScore() + addScore);
-    markAnswered(curChapter.id, activeQuestion.id);
-  }
-
-  imgLayer.style.display = "none";
-  activeQuestion = null;
-
-  const returnIndex = curVideoIndex + 1;
-
-  if (branchVideo){
-    playInjected(branchVideo, returnIndex);
-    return;
-  }
-  loadVideo(returnIndex);
-}
-
-/* ended */
 function handleEnd(){
-  if (blockEnd) return;
-  if (endHandled) return;
+  if (blockEnd || endHandled) return;
   endHandled = true;
-
   if (injectedActive){
     injectedActive = false;
-    loadVideo(injectedReturnIndex);
-    return;
+    loadVideo(injectedReturnIndex); return;
   }
-
-  if (!curChapter) return;
-  const vidName = currentVideoName();
-
+  const vidName = curChapter.videos[curVideoIndex];
   const q = (curChapter.questions || []).find(q => q.after === vidName);
   if (q && !isAnswered(curChapter.id, q.id)){
-    setTimeout(()=> openQuestion(q), 80);
-    return;
+    setTimeout(()=> openQuestion(q), 100); return;
   }
-
   loadVideo(curVideoIndex + 1);
 }
 
 bgVideo.addEventListener("ended", handleEnd);
-bgVideo.addEventListener("timeupdate", ()=>{
-  if (blockEnd || endHandled) return;
-  if (!isFinite(bgVideo.duration) || bgVideo.duration <= 0) return;
-  if (bgVideo.duration - bgVideo.currentTime < 0.18) handleEnd();
-});
 
-/* chapter */
+function openQuestion(q){
+  blockEnd = true; endHandled = true;
+  bgVideo.pause();
+  qImg.src = q.img;
+  imgStage.style.aspectRatio = q.aspect || "2048/1152";
+  imgStage.querySelectorAll(".hotspot").forEach(n => n.remove());
+  q.hotspots.forEach(h => {
+    const div = document.createElement("div");
+    div.className = "hotspot";
+    div.style.cssText = `left:${h.left}%; top:${h.top}%; width:${h.width}%; height:${h.height}%;`;
+    div.onclick = () => {
+      if (!isAnswered(curChapter.id, q.id)){
+        saveScore(loadScore() + h.score);
+        markAnswered(curChapter.id, q.id);
+      }
+      imgLayer.style.display = "none";
+      if (h.nextVideo){
+        injectedActive = true; injectedReturnIndex = curVideoIndex + 1;
+        bgVideo.src = h.nextVideo; bgVideo.load();
+      } else {
+        loadVideo(curVideoIndex + 1);
+      }
+    };
+    imgStage.appendChild(div);
+  });
+  imgLayer.style.display = "flex";
+}
+
 function startChapterById(chId){
-  const ch = findChapterById(chId);
-  if (!ch){
-    alert("找不到章节：" + chId);
-    return;
-  }
-
-  blockEnd = false;
-  endHandled = false;
-  activeQuestion = null;
-  imgLayer.style.display = "none";
-
-  injectedActive = false;
-  injectedReturnIndex = 0;
-
-  curChapter = ch;
-  set("currentChapterId", ch.id);
-
-  setChapterUI(ch);
-  playBgmForChapter(ch);
+  curChapter = CHAPTERS.find(c => c.id === chId);
+  set("currentChapterId", chId);
+  chapterTitle.childNodes[0].nodeValue = curChapter.title + "\n  ";
+  chapterEn.textContent = curChapter.en;
+  bgm.src = curChapter.bgm; bgm.play().catch(()=>{});
   loadVideo(0);
 }
 
 function gotoNextChapter(){
-  if (!curChapter) return;
-
   if (!curChapter.nextChapterId){
-    stopGlobalTimer();
-    // ✅ 结束不遮挡（按你程序2当前设定）
-    try{ bgVideo.pause(); }catch(e){}
-    try{ bgm.pause(); }catch(e){}
-    return;
+    set("timerStop", Date.now()); clearInterval(timerTick);
+    showToast("全剧终"); return;
   }
-
-  const next = findChapterById(curChapter.nextChapterId);
-  if (!next){
-    alert("下一章配置缺失：" + curChapter.nextChapterId);
-    return;
-  }
-
-  try{ bgVideo.pause(); }catch(e){}
+  const next = CHAPTERS.find(c => c.id === curChapter.nextChapterId);
   gate.style.display = "flex";
-  setChapterUI(next);
-
-  const btnStart = document.getElementById("btnStart");
-  btnStart.style.display = "inline-block";
-  btnStart.textContent = `进入 ${next.title} ▶`;
-  btnStart.onclick = ()=>{
-    gate.style.display = "none";
-    startChapterById(next.id);
+  gateH2.textContent = `进入 ${next.title}`;
+  document.getElementById("btnStart").onclick = () => {
+    gate.style.display = "none"; startChapterById(next.id);
   };
-
-  showToast(`${curChapter.title} 完成，进入 ${next.title}`, 1600);
 }
 
-/* reset */
-document.getElementById("btnReset").onclick = ()=>{
-  if(!confirm("清空本机积分、作答记录与计时？")) return;
-  Object.keys(localStorage).forEach(k=>{
-    if(k.startsWith(`${STORE}:`)) localStorage.removeItem(k);
-  });
-  location.reload();
+/* 初始化 */
+saveScore(loadScore());
+if (get("timerStart") && !get("timerStop")) timerTick = setInterval(updateTimerUI, 1000);
+
+document.getElementById("btnStart").onclick = () => {
+  gate.style.display = "none";
+  if (!get("timerStart")) set("timerStart", Date.now());
+  timerTick = setInterval(updateTimerUI, 1000);
+  const last = get("currentChapterId");
+  startChapterById(last || "ch1");
 };
 
-/* init */
-saveScore(loadScore());
-resumeTimerIfNeeded();
-
-const btnStart = document.getElementById("btnStart");
-btnStart.onclick = ()=>{
-  gate.style.display = "none";
-  startGlobalTimerOnce();
-
-  const last = get("currentChapterId");
-  if (last && findChapterById(last)) startChapterById(last);
-  else startChapterById("ch1");
+document.getElementById("btnReset").onclick = () => {
+  if(confirm("重置所有进度？")){
+    localStorage.clear(); location.reload();
+  }
 };
 </script>
 </body>
