@@ -9,7 +9,13 @@
 body{ margin:0; background:#000; color:#e5e7eb; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; overflow:hidden; }
 
 .bg{ position:fixed; inset:0; z-index:0; background:#000; }
-#bgVideo{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+#bgVideo{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit: contain;      /* ✅ 关键：完整显示，允许黑边 */
+  background:#000;
+}
+
 .shade{ position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,0.04), rgba(0,0,0,0.30)); }
 
 .chapter{
@@ -75,6 +81,27 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
   border-radius:12px;
   font-size:13px;
   display:none;
+}
+/* ✅ 竖屏优化：视频占上半部分，下面留出 UI 空间 */
+@media (orientation: portrait){
+  .bg{
+    position:fixed; inset:0; background:#000;
+  }
+  #bgVideo{
+    height: 62vh;        /* 你可改 55~75vh */
+    width: 100vw;
+    top: 0;
+    bottom: auto;
+    object-fit: contain; /* 竖屏仍完整显示 */
+  }
+  .shade{
+    top: 0;
+    height: 62vh;
+  }
+
+  /* 让 UI 不压在视频上（可选） */
+  .chapter{ top: calc(62vh + 10px); left: 14px; }
+  .hud{ top: calc(62vh + 10px); right: 14px; }
 }
 </style>
 </head>
@@ -486,3 +513,5 @@ btnStart.onclick = ()=>{
 </script>
 </body>
 </html>
+
+
