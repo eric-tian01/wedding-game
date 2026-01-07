@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -88,6 +87,51 @@
       margin-top: 4px;
       line-height: 1.5;
     }
+
+    /* ===== 开始遮罩层 ===== */
+    .start-overlay{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      z-index:5;
+      background: rgba(2,6,23,0.70);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .start-card{
+      width:min(92%, 420px);
+      border:1px solid rgba(148,163,184,0.35);
+      border-radius:14px;
+      padding:14px 14px 12px;
+      background: radial-gradient(circle at top, rgba(30,64,175,0.35), rgba(15,23,42,0.95));
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+      text-align:center;
+    }
+    .start-title{
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:0.06em;
+    }
+    .start-desc{
+      margin-top:8px;
+      font-size:12px;
+      opacity:0.9;
+      line-height:1.6;
+    }
+    .start-btn{
+      margin-top:10px;
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(56,189,248,0.55);
+      background: rgba(56,189,248,0.18);
+      color:#e5e7eb;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .start-btn:active{
+      transform: translateY(1px);
+    }
   </style>
 </head>
 <body>
@@ -102,6 +146,18 @@
 
       <div class="puzzle-container">
         <canvas id="puzzleCanvas"></canvas>
+
+        <!-- 开始覆盖层：未开始时挡住拼图并提示 -->
+        <div id="startOverlay" class="start-overlay">
+          <div class="start-card">
+            <div class="start-title">拼图大挑战</div>
+            <div class="start-desc">
+              先读规则再开始计时。<br/>
+              点击下方按钮后开始游戏与计时。
+            </div>
+            <button id="startBtn" class="start-btn">开始游戏</button>
+          </div>
+        </div>
       </div>
 
       <div class="status-row">
@@ -130,6 +186,9 @@
     const ctx = canvas.getContext("2d");
     const timeEl = document.getElementById("time");
     const movesEl = document.getElementById("moves");
+
+    const startOverlay = document.getElementById("startOverlay");
+    const startBtn = document.getElementById("startBtn");
 
     const img = new Image();
 
@@ -170,7 +229,6 @@
       startTime = performance.now();
       if (timerId) cancelAnimationFrame(timerId);
 
-      running = true;
       function tick(now) {
         if (!running) return;
         const elapsed = (now - startTime) / 1000;
@@ -317,7 +375,6 @@
       }
 
       // 初始：碎片随机散落在同一个方框内（boardArea）
-      // 关键：tx/ty 是对“绝对坐标 pathPoints”的平移，因此我们要保证平移后 bbox 仍留在 boardArea 内
       const margin = 6;
       pieces.forEach((p) => {
         const bb = p.bbox;
@@ -327,7 +384,6 @@
         const minTy = (boardArea.y - bb.minY) + margin;
         const maxTy = (boardArea.y + boardArea.height - bb.maxY) - margin;
 
-        // 如果极端情况下可移动空间为负（理论上不该），就退化为 0
         const rx = (maxTx >= minTx) ? (minTx + Math.random() * (maxTx - minTx)) : 0;
         const ry = (maxTy >= minTy) ? (minTy + Math.random() * (maxTy - minTy)) : 0;
 
@@ -460,7 +516,7 @@
       let tx = x - dragOffsetX;
       let ty = y - dragOffsetY;
 
-      // 关键修改：不让碎片拖出“同一个方框(boardArea)”
+      // 不让碎片拖出“同一个方框(boardArea)”
       const bb = currentPiece.bbox;
       const margin = 6;
 
@@ -547,6 +603,16 @@
       window.addEventListener("touchcancel", onPointerUp, { passive: false });
     }
 
+    // ====== 新增：点击开始才开局计时 ======
+    function beginGame() {
+      if (!imageInitialized) return;
+      startOverlay.style.display = "none";
+      running = true;
+      resetTimer();
+      startTimer();
+    }
+    startBtn.addEventListener("click", beginGame);
+
     function initAfterImageLoaded() {
       if (imageInitialized) return;
       imageInitialized = true;
@@ -567,9 +633,11 @@
       createPieces();
       renderAll();
 
+      // 关键：不自动开始
+      running = false;
       resetTimer();
-      startTimer();
       attachEvents();
+      startOverlay.style.display = "flex";
     }
 
     img.onload = initAfterImageLoaded;
@@ -582,6 +650,10 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("图片加载失败，请检查 IMAGE_SRC 路径。", canvas.width / 2, canvas.height / 2);
+      // 同时保持遮罩在，避免用户误点
+      startOverlay.style.display = "flex";
+      running = false;
+      resetTimer();
     };
 
     img.src = IMAGE_SRC;
@@ -597,8 +669,11 @@
         layoutCanvas();
         createPieces();
         renderAll();
+
+        // 不自动开始
+        running = false;
         resetTimer();
-        startTimer();
+        startOverlay.style.display = "flex";
       } else {
         layoutCanvas();
         clearCanvas();
@@ -607,6 +682,10 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("正在加载照片，请稍候…", canvas.width / 2, canvas.height / 2);
+
+        running = false;
+        resetTimer();
+        startOverlay.style.display = "flex";
       }
     });
 
@@ -615,8 +694,11 @@
       layoutCanvas();
       createPieces();
       renderAll();
+
+      // resize 视为重置一局：不自动开始
+      running = false;
       resetTimer();
-      startTimer();
+      startOverlay.style.display = "flex";
     });
   </script>
 </body>
