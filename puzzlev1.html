@@ -106,7 +106,7 @@
 
       <div class="status-row">
         <div>时间：<span id="time" class="big-time">0.00</span> 秒</div>
-        <div>已就位碎片：<span id="moves">0</span> / 16</div>
+        <div>已就位碎片：<span id="moves">0</span> / 9</div>
       </div>
       <div class="hint">
         操作：按住碎片拖动到正确位置，会自动吸附。<br/>
@@ -528,7 +528,7 @@
             revealProgress = 1;
             renderAll();
             setTimeout(() => {
-              alert(`拼图完成！用时 ${used.toFixed(2)} 秒，共 ${piecesPlaced} 块碎片就位。\n\n谢谢你们见证我们的成长。`);
+              alert(`拼图完成！用时 ${used.toFixed(2)} 秒，共 ${piecesPlaced} 块碎片就位。\n\n这幅拼图终于完整了。对我们来说，这不只是一幅画，更像是我们的生活。在这个画面里，每一块碎片都代表着在座的一位亲人或朋友。 谢谢你们，正是因为有了你们每一个人的参与和爱，我们的生命才变得完整、圆满。`);
             }, 250);
           }
         }
