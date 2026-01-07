@@ -359,25 +359,45 @@ function handleEnd(){
 bgVideo.addEventListener("ended", handleEnd);
 
 function openQuestion(q){
-  blockEnd = true; endHandled = true;
+  blockEnd = true; 
+  endHandled = true; // 进入答题模式，锁定视频跳转
   bgVideo.pause();
+  
   qImg.src = q.img;
   imgStage.style.aspectRatio = q.aspect || "2048/1152";
+  
+  // 清除旧的热点
   imgStage.querySelectorAll(".hotspot").forEach(n => n.remove());
+  
   q.hotspots.forEach(h => {
     const div = document.createElement("div");
     div.className = "hotspot";
     div.style.cssText = `left:${h.left}%; top:${h.top}%; width:${h.width}%; height:${h.height}%;`;
+    
     div.onclick = () => {
+      // 1. 处理积分
       if (!isAnswered(curChapter.id, q.id)){
         saveScore(loadScore() + h.score);
         markAnswered(curChapter.id, q.id);
       }
+      
+      // 2. 隐藏题目层
       imgLayer.style.display = "none";
+      
+      // ✅ 关键修复点：解除逻辑锁定
+      blockEnd = false; 
+      endHandled = false; 
+
       if (h.nextVideo){
-        injectedActive = true; injectedReturnIndex = curVideoIndex + 1;
-        bgVideo.src = h.nextVideo; bgVideo.load();
+        // 进入分支视频流程
+        injectedActive = true; 
+        injectedReturnIndex = curVideoIndex + 1;
+        bgVideo.src = h.nextVideo; 
+        bgVideo.load();
+        // 在点击事件内直接触发 play，保证浏览器权限
+        bgVideo.play().catch(e => console.log("播放被拦截:", e));
       } else {
+        // 直接进入下一段视频
         loadVideo(curVideoIndex + 1);
       }
     };
@@ -385,7 +405,6 @@ function openQuestion(q){
   });
   imgLayer.style.display = "flex";
 }
-
 function startChapterById(chId){
   curChapter = CHAPTERS.find(c => c.id === chId);
   set("currentChapterId", chId);
