@@ -83,26 +83,65 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
   display:none;
 }
 /* ✅ 竖屏优化：视频占上半部分，下面留出 UI 空间 */
-@media (orientation: portrait){
+
+ @media (orientation: portrait){
+  :root{
+    --vhVideo: 62vh;                 /* 视频高度，可调 55–75vh */
+    --pad: clamp(10px, 3vw, 16px);   /* 手机边距自适应 */
+  }
+
   .bg{
     position:fixed; inset:0; background:#000;
   }
+
+  /* 视频区域：上半屏 */
   #bgVideo{
-    height: 62vh;        /* 你可改 55~75vh */
-    width: 100vw;
-    top: 0;
-    bottom: auto;
-    object-fit: contain; /* 竖屏仍完整显示 */
-  }
-  .shade{
-    top: 0;
-    height: 62vh;
+    position:absolute;
+    left:0; top:0;
+    width:100vw;
+    height: var(--vhVideo);
+    object-fit: contain;     /* 竖屏完整显示，不裁剪 */
+    background:#000;
   }
 
-  /* 让 UI 不压在视频上（可选） */
-  .chapter{ top: calc(62vh + 10px); left: 14px; }
-  .hud{ top: calc(62vh + 10px); right: 14px; }
+  .shade{
+    position:absolute;
+    left:0; top:0;
+    width:100vw;
+    height: var(--vhVideo);
+  }
+
+  /* ✅ 关键：把标题/计分板“钉”在视频区域内 */
+  .chapter{
+    top: var(--pad);
+    left: var(--pad);
+    z-index: 8;
+    font-size: clamp(18px, 5vw, 26px); /* 竖屏标题别太大 */
+  }
+  .chapter small{
+    font-size: clamp(11px, 3.2vw, 14px);
+  }
+
+  .hud{
+    top: var(--pad);
+    right: var(--pad);
+    z-index: 8;
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 12px;
+  }
+  .scoreBox, .timerBox{
+    font-size: 12px;
+  }
+  .hud button{
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* ✅ 下面留的 UI 区域（如果你后面要放别的） */
+  /* 你现在没放内容也没关系，不影响。 */
 }
+ 
 </style>
 </head>
 <body>
