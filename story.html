@@ -141,6 +141,9 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 
 <script>
 const STORE = "wedding_game_v2";
+const GLOBAL_BGM = BASE_URL + "love_story.mp3";
+const GLOBAL_BGM_VOLUME = 0.35; // 推荐 0.3–0.4，婚礼现场最安全
+  
 // 阿里云 OSS 基础路径
 const BASE_URL = "https://haibing-wedding-video.oss-cn-chengdu.aliyuncs.com/";
 
@@ -408,11 +411,14 @@ function openQuestion(q){
 function startChapterById(chId){
   curChapter = CHAPTERS.find(c => c.id === chId);
   set("currentChapterId", chId);
+
   chapterTitle.childNodes[0].nodeValue = curChapter.title + "\n  ";
   chapterEn.textContent = curChapter.en;
-  bgm.src = curChapter.bgm; bgm.play().catch(()=>{});
+
+  // ❌ 不再在章节里控制音乐
   loadVideo(0);
 }
+
 
 function gotoNextChapter(){
   if (!curChapter.nextChapterId){
@@ -433,11 +439,24 @@ if (get("timerStart") && !get("timerStop")) timerTick = setInterval(updateTimerU
 
 document.getElementById("btnStart").onclick = () => {
   gate.style.display = "none";
+
+  // ✅ 只在第一次用户交互时启动背景音乐
+  if (!bgm.src) {
+    bgm.src = GLOBAL_BGM;
+    bgm.volume = GLOBAL_BGM_VOLUME;
+    bgm.loop = true;
+    bgm.play().catch(e => {
+      console.log("BGM autoplay blocked, waiting user interaction", e);
+    });
+  }
+
   if (!get("timerStart")) set("timerStart", Date.now());
   timerTick = setInterval(updateTimerUI, 1000);
+
   const last = get("currentChapterId");
   startChapterById(last || "ch1");
 };
+
 
 document.getElementById("btnReset").onclick = () => {
   if(confirm("重置所有进度？")){
