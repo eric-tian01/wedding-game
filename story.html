@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>剧情游戏 - 完整稳定版</title>
+<title>剧情游戏 - 优化稳定版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <style>
 *{ box-sizing:border-box; }
@@ -21,16 +21,17 @@ body{ margin:0; background:#000; color:#e5e7eb; font-family:-apple-system,BlinkM
 
 .chapter{
   position:fixed; top:18px; left:18px; z-index:4;
-  font-weight:900; font-size:30px; letter-spacing:0.08em;
-  color:#e5e7eb; text-shadow:0 6px 22px rgba(0,0,0,0.65);
+  font-weight:900; font-size:24px; letter-spacing:0.08em;
+  color:#e5e7eb; text-shadow:0 4px 15px rgba(0,0,0,0.8);
 }
-.chapter small{ display:block; font-size:14px; opacity:0.75; letter-spacing:0.15em; margin-top:2px; }
+.chapter small{ display:block; font-size:12px; opacity:0.75; letter-spacing:0.15em; margin-top:2px; }
 
+/* 电脑端 HUD 位置 */
 .hud{
   position:fixed; top:14px; right:14px; z-index:4;
   display:flex; gap:10px; align-items:center;
   padding:10px 14px; border-radius:14px;
-  background:rgba(15,23,42,.55);
+  background:rgba(15,23,42,.65);
   border:1px solid rgba(148,163,184,.35);
   backdrop-filter:blur(10px);
 }
@@ -74,18 +75,20 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 .hotspot{ position:absolute; cursor:pointer; background: rgba(255,255,255,0); }
 
 .toast{
-  position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
-  z-index:7;
-  background:rgba(15,23,42,.8);
-  padding:10px 20px;
-  border-radius:12px;
-  font-size:14px;
-  display:none;
+  position:fixed; left:50%; bottom:100px; transform:translateX(-50%);
+  z-index:7; background:rgba(15,23,42,.85); padding:10px 20px;
+  border-radius:12px; font-size:14px; display:none;
 }
 
+/* 📱 手机端适配：解决标题重叠 */
 @media (orientation: portrait){
-  #bgVideo, .shade { height: 65vh; top: 10vh; }
-  .chapter { font-size: 22px; }
+  .bg, #bgVideo { height: 60vh; top: 5vh; }
+  .chapter { top: 12px; left: 12px; font-size: 20px; }
+  /* 将 HUD 移动到屏幕底部，避开顶部标题 */
+  .hud {
+    top: auto; right: 12px; bottom: 30px; left: 12px;
+    justify-content: space-around;
+  }
 }
 </style>
 </head>
@@ -97,8 +100,8 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 </div>
 
 <div class="chapter" id="chapterTitle">
-  第一章 · 初逢
-  <small id="chapterEn">THE FIRST MEETING</small>
+  准备中...
+  <small id="chapterEn">LOADING</small>
 </div>
 
 <div class="hud">
@@ -124,7 +127,6 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 <audio id="bgm" loop preload="auto"></audio>
 
 <script>
-/* --- 配置区 --- */
 const STORE = "wedding_game_v2";
 const BASE_URL = "https://haibing-wedding-video.oss-cn-chengdu.aliyuncs.com/";
 const GLOBAL_BGM = BASE_URL + "love_story.mp3"; 
@@ -155,8 +157,8 @@ const CHAPTERS = [
       },
       { id: "q_ch2_trash_selling", after: BASE_URL + "langsong.mp4", img: BASE_URL + "jiasai.png",
         hotspots: [
-          { score: 10, left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" },
-          { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" }
+          { score: 10, left: 5,  top: 5, width: 40, height: 90, nextVideo: BASE_URL + "right_selection.mp4" },
+          { score: 0,  left: 55, top: 5, width: 40, height: 90, nextVideo: BASE_URL + "wrong_selection.mp4" }
         ]
       }
     ],
@@ -168,9 +170,10 @@ const CHAPTERS = [
     questions: [{
       id: "q_ch3_1_work", after: BASE_URL + "gexing_merge13.mp4", img: BASE_URL + "gongzuo.png",
       hotspots: [
-        { score: 0,  left:52, top:44, width:10, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
-        { score: 10, left:63, top:44, width:10, height:18, nextVideo: BASE_URL + "right_selection.mp4" },
-        { score: 0,  left:75, top:44, width:10, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" }
+        { score: 0,  left:50, top:40, width:14, height:25, nextVideo: BASE_URL + "wrong_selection.mp4" },
+        // ✅ 修复：扩大热区，方便手机点击
+        { score: 10, left:63, top:40, width:14, height:25, nextVideo: BASE_URL + "right_selection.mp4" },
+        { score: 0,  left:76, top:40, width:14, height:25, nextVideo: BASE_URL + "wrong_selection.mp4" }
       ]
     }],
     nextChapterId: "ch4"
@@ -181,8 +184,8 @@ const CHAPTERS = [
     questions: [{
       id: "q_ch4_beibao", after: BASE_URL + "zaihui_merge11.mp4", img: BASE_URL + "beibao.png",
       hotspots: [
-        { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "right_selection.mp4" },
-        { score: 0,  left: 5, top: 73.9, width: 50, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" }
+        { score: 30, left: 62, top: 72, width: 14, height: 28, nextVideo: BASE_URL + "right_selection.mp4" },
+        { score: 0,  left: 5, top: 72, width: 50, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }
       ]
     }],
     nextChapterId: "ch5"
@@ -203,7 +206,6 @@ const CHAPTERS = [
   { id: "ch7", title: "第七章 · 此刻", en: "THIS MOMENT", videos: [BASE_URL + "cike1.mp4", BASE_URL + "cike2.mp4", BASE_URL + "cike3.mp4"], questions: [], nextChapterId: null }
 ];
 
-/* --- 核心逻辑 --- */
 const bgVideo = document.getElementById("bgVideo");
 const bgm = document.getElementById("bgm");
 const scoreEl = document.getElementById("score");
@@ -220,12 +222,11 @@ let curChapter = null, curVideoIndex = 0, endHandled = false, blockEnd = false;
 let injectedActive = false, injectedReturnIndex = 0;
 
 function switchVideo(url) {
-  blockEnd = false;
-  endHandled = false;
+  blockEnd = false; endHandled = false;
   bgVideo.pause();
   bgVideo.src = url;
   bgVideo.load();
-  bgVideo.play().catch(e => console.log("播放被拦截:", e));
+  bgVideo.play().catch(e => console.log("播放失败:", e));
 }
 
 function loadMainVideo(i) {
@@ -241,13 +242,11 @@ function loadMainVideo(i) {
 function handleEnd() {
   if (blockEnd || endHandled) return;
   endHandled = true;
-
   if (injectedActive) {
     injectedActive = false;
     loadMainVideo(injectedReturnIndex);
     return;
   }
-
   const vidName = curChapter.videos[curVideoIndex];
   const q = (curChapter.questions || []).find(q => q.after === vidName);
   if (q && !isAnswered(curChapter.id, q.id)) {
@@ -260,11 +259,9 @@ function handleEnd() {
 bgVideo.addEventListener("ended", handleEnd);
 
 function openQuestion(q) {
-  blockEnd = true;
-  endHandled = true;
+  blockEnd = true; endHandled = true;
   bgVideo.pause();
   qImg.src = q.img;
-  
   imgStage.querySelectorAll(".hotspot").forEach(n => n.remove());
   q.hotspots.forEach(h => {
     const div = document.createElement("div");
@@ -277,10 +274,8 @@ function openQuestion(q) {
         markAnswered(curChapter.id, q.id);
       }
       imgLayer.style.display = "none";
-      
       if (h.nextVideo) {
-        injectedActive = true;
-        injectedReturnIndex = curVideoIndex + 1;
+        injectedActive = true; injectedReturnIndex = curVideoIndex + 1;
         switchVideo(h.nextVideo);
       } else {
         loadMainVideo(curVideoIndex + 1);
@@ -291,51 +286,38 @@ function openQuestion(q) {
   imgLayer.style.display = "flex";
 }
 
-/* --- 存储与工具 --- */
 function get(k){ return localStorage.getItem(`${STORE}:${k}`); }
 function set(k,v){ localStorage.setItem(`${STORE}:${k}`, String(v)); }
 function loadScore(){ return Number(get("score") || 0); }
 function saveScore(v){ set("score", v); scoreEl.textContent = v; }
 function isAnswered(chId, qid){ return get(`answered:${chId}:${qid}`) === "1"; }
 function markAnswered(chId, qid){ set(`answered:${chId}:${qid}`, "1"); }
-function showToast(msg){ toast.textContent = msg; toast.style.display="block"; setTimeout(()=>toast.style.display="none", 2000); }
+function showToast(msg){ toast.textContent = msg; toast.style.display="block"; setTimeout(()=>toast.style.display="none", 2500); }
 
 let timerTick = null;
-
-// ✅ 核心修复：更新计时逻辑，支持停止时间
 function updateTimerUI(){
   const st = Number(get("timerStart") || 0);
-  const sp = Number(get("timerStop") || 0); // 获取停止时间戳
+  const sp = Number(get("timerStop") || 0);
   if (!st){ timerEl.textContent = "00:00"; return; }
-  
-  // 如果有停止时间，则使用停止时间计算，否则用当前时间
   const now = sp > 0 ? sp : Date.now();
   const elapsed = now - st;
-  
   const s = Math.floor(elapsed/1000);
-  const mm = Math.floor(s/60);
-  const ss = s%60;
-  timerEl.textContent = `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+  timerEl.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 }
 
 function startChapterById(chId) {
   curChapter = CHAPTERS.find(c => c.id === chId);
-  set("currentChapterId", chId);
   chapterTitle.childNodes[0].nodeValue = curChapter.title + " ";
   chapterEn.textContent = curChapter.en;
   loadMainVideo(0);
 }
 
-// ✅ 核心修复：全剧终时记录停止时间并清除定时器
 function gotoNextChapter() {
   if (!curChapter.nextChapterId) {
-    // 判定为全剧终
-    if (!get("timerStop")) {
-      set("timerStop", Date.now()); // 记录这一刻的时间戳
-    }
-    if (timerTick) clearInterval(timerTick); // 停止每秒更新 UI
-    updateTimerUI(); // 最后刷新一次确保显示准确
-    showToast("全剧终！感谢观看");
+    if (!get("timerStop")) set("timerStop", Date.now());
+    if (timerTick) clearInterval(timerTick);
+    updateTimerUI();
+    showToast("全剧终！感谢您的观看");
     return;
   }
   const next = CHAPTERS.find(c => c.id === curChapter.nextChapterId);
@@ -347,41 +329,39 @@ function gotoNextChapter() {
   };
 }
 
-/* --- 初始化 --- */
 saveScore(loadScore());
 
 document.getElementById("btnStart").onclick = () => {
   gate.style.display = "none";
-  
   if (!bgm.src || bgm.src === "") {
     bgm.src = GLOBAL_BGM;
     bgm.volume = GLOBAL_BGM_VOLUME;
-    bgm.play().catch(e => console.log("BGM 播放受阻:", e));
+    bgm.play().catch(e => console.log("BGM受阻"));
   }
   bgVideo.muted = false;
 
-  // 只有在没开始计时，或没结束计时的情况下才运行定时器
+  // 1. 初始化计时
   if (!get("timerStart")) set("timerStart", Date.now());
   
+  // 2. 只有未结束时才开启定时器，否则仅更新UI固定数值
   if (!get("timerStop")) {
     if (!timerTick) timerTick = setInterval(updateTimerUI, 1000);
   } else {
-    updateTimerUI(); // 即使结束了也显示最终固定的时间
+    updateTimerUI();
   }
   
-  const last = get("currentChapterId");
-  startChapterById(last || "ch1");
+  // 3. ✅ 核心修改：无论上次在哪，重新扫码/刷新进入一律从头播放
+  startChapterById("ch1");
 };
 
 document.getElementById("btnReset").onclick = () => {
-  if(confirm("确定重置所有进度吗？")) { 
+  if(confirm("重置所有进度（含积分和时间）吗？")) { 
     localStorage.clear(); 
     if (timerTick) clearInterval(timerTick);
     location.reload(); 
   }
 };
 
-// 页面加载时根据状态显示一次计时
 updateTimerUI();
 </script>
 </body>
