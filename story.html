@@ -357,6 +357,18 @@ document.getElementById("btnStart").onclick = () => {
 
 // 页面加载自动更新计时
 updateTimerUI();
+  // 秘密重置逻辑：连续点击左上角章节标题 5 次触发重置
+let debugClickCount = 0;
+document.getElementById("chapterTitle").onclick = () => {
+  debugClickCount++;
+  if (debugClickCount >= 5) {
+    if (confirm("【开发者测试】确定要清空所有数据并重新开始吗？")) {
+      localStorage.clear();
+      location.reload();
+    }
+    debugClickCount = 0;
+  }
+};
 </script>
 </body>
 </html>
