@@ -126,7 +126,6 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 <script>
 /* --- 配置区 --- */
 const STORE = "wedding_game_v2";
-// ✅ 核心修复：先定义 BASE_URL
 const BASE_URL = "https://haibing-wedding-video.oss-cn-chengdu.aliyuncs.com/";
 const GLOBAL_BGM = BASE_URL + "love_story.mp3"; 
 const GLOBAL_BGM_VOLUME = 0.35;
@@ -220,14 +219,13 @@ const toast = document.getElementById("toast");
 let curChapter = null, curVideoIndex = 0, endHandled = false, blockEnd = false;
 let injectedActive = false, injectedReturnIndex = 0;
 
-// ✅ 统一步骤切换函数
 function switchVideo(url) {
   blockEnd = false;
   endHandled = false;
   bgVideo.pause();
   bgVideo.src = url;
   bgVideo.load();
-  bgVideo.play().catch(e => console.log("播放被拦截或失败:", e));
+  bgVideo.play().catch(e => console.log("播放被拦截:", e));
 }
 
 function loadMainVideo(i) {
@@ -303,11 +301,21 @@ function markAnswered(chId, qid){ set(`answered:${chId}:${qid}`, "1"); }
 function showToast(msg){ toast.textContent = msg; toast.style.display="block"; setTimeout(()=>toast.style.display="none", 2000); }
 
 let timerTick = null;
+
+// ✅ 核心修复：更新计时逻辑，支持停止时间
 function updateTimerUI(){
   const st = Number(get("timerStart") || 0);
-  const elapsed = Date.now() - st;
+  const sp = Number(get("timerStop") || 0); // 获取停止时间戳
+  if (!st){ timerEl.textContent = "00:00"; return; }
+  
+  // 如果有停止时间，则使用停止时间计算，否则用当前时间
+  const now = sp > 0 ? sp : Date.now();
+  const elapsed = now - st;
+  
   const s = Math.floor(elapsed/1000);
-  timerEl.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  const mm = Math.floor(s/60);
+  const ss = s%60;
+  timerEl.textContent = `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
 }
 
 function startChapterById(chId) {
@@ -318,8 +326,15 @@ function startChapterById(chId) {
   loadMainVideo(0);
 }
 
+// ✅ 核心修复：全剧终时记录停止时间并清除定时器
 function gotoNextChapter() {
   if (!curChapter.nextChapterId) {
+    // 判定为全剧终
+    if (!get("timerStop")) {
+      set("timerStop", Date.now()); // 记录这一刻的时间戳
+    }
+    if (timerTick) clearInterval(timerTick); // 停止每秒更新 UI
+    updateTimerUI(); // 最后刷新一次确保显示准确
     showToast("全剧终！感谢观看");
     return;
   }
@@ -338,24 +353,36 @@ saveScore(loadScore());
 document.getElementById("btnStart").onclick = () => {
   gate.style.display = "none";
   
-  // ✅ 关键：用户点击时解锁声音
   if (!bgm.src || bgm.src === "") {
     bgm.src = GLOBAL_BGM;
     bgm.volume = GLOBAL_BGM_VOLUME;
     bgm.play().catch(e => console.log("BGM 播放受阻:", e));
   }
-  bgVideo.muted = false; // 确保视频有声
+  bgVideo.muted = false;
 
+  // 只有在没开始计时，或没结束计时的情况下才运行定时器
   if (!get("timerStart")) set("timerStart", Date.now());
-  if (!timerTick) timerTick = setInterval(updateTimerUI, 1000);
+  
+  if (!get("timerStop")) {
+    if (!timerTick) timerTick = setInterval(updateTimerUI, 1000);
+  } else {
+    updateTimerUI(); // 即使结束了也显示最终固定的时间
+  }
   
   const last = get("currentChapterId");
   startChapterById(last || "ch1");
 };
 
 document.getElementById("btnReset").onclick = () => {
-  if(confirm("确定重置所有进度吗？")) { localStorage.clear(); location.reload(); }
+  if(confirm("确定重置所有进度吗？")) { 
+    localStorage.clear(); 
+    if (timerTick) clearInterval(timerTick);
+    location.reload(); 
+  }
 };
+
+// 页面加载时根据状态显示一次计时
+updateTimerUI();
 </script>
 </body>
 </html>
