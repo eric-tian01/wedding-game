@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>剧情游戏 - 多章节</title>
+<title>剧情游戏 - 完整稳定版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <style>
 *{ box-sizing:border-box; }
@@ -38,28 +38,28 @@ body{ margin:0; background:#000; color:#e5e7eb; font-family:-apple-system,BlinkM
 
 button{
   cursor:pointer; border:none; border-radius:999px;
-  padding:6px 12px; font-size:13px; color:#fff; background:#2563eb;
+  padding:6px 16px; font-size:13px; color:#fff; background:#2563eb; font-weight:bold;
 }
 button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,184,.35); }
 
 .gate{
   position:fixed; inset:0; z-index:6;
   display:flex; justify-content:center; align-items:center;
-  background:rgba(0,0,0,.55);
+  background:rgba(0,0,0,.8);
 }
 .gateCard{
   width:min(560px,92vw);
-  border-radius:18px; padding:20px;
-  background:rgba(15,23,42,.86);
+  border-radius:18px; padding:30px;
+  background:rgba(15,23,42,.95);
   border:1px solid rgba(148,163,184,.35);
   text-align:center;
 }
-.gateCard h2{ margin:0 0 10px; }
+.gateCard h2{ margin:0 0 15px; }
 
 .imgLayer{
   position:fixed; inset:0; z-index:5;
   display:none; justify-content:center; align-items:center;
-  background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,.6);
 }
 .imgStage{
   position:relative;
@@ -68,47 +68,31 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
   background:#000;
   border-radius:14px;
   overflow:hidden;
+  border: 2px solid #3b82f6;
 }
 .imgStage img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
-.hotspot{ position:absolute; cursor:pointer; }
+.hotspot{ position:absolute; cursor:pointer; background: rgba(255,255,255,0); }
 
 .toast{
   position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
   z-index:7;
-  background:rgba(15,23,42,.72);
-  border:1px solid rgba(148,163,184,.35);
-  backdrop-filter:blur(10px);
-  padding:10px 12px;
+  background:rgba(15,23,42,.8);
+  padding:10px 20px;
   border-radius:12px;
-  font-size:13px;
+  font-size:14px;
   display:none;
 }
 
 @media (orientation: portrait){
-  :root{
-    --vhVideo: 62vh;
-    --pad: clamp(10px, 3vw, 16px);
-  }
-  #bgVideo, .shade{
-    width:100vw;
-    height: var(--vhVideo);
-  }
-  .chapter{
-    top: var(--pad);
-    left: var(--pad);
-    font-size: clamp(18px, 5vw, 26px);
-  }
-  .hud{
-    top: var(--pad);
-    right: var(--pad);
-  }
+  #bgVideo, .shade { height: 65vh; top: 10vh; }
+  .chapter { font-size: 22px; }
 }
 </style>
 </head>
 <body>
 
 <div class="bg">
-  <video id="bgVideo" playsinline webkit-playsinline x5-playsinline muted preload="auto"></video>
+  <video id="bgVideo" playsinline webkit-playsinline x5-playsinline preload="auto"></video>
   <div class="shade"></div>
 </div>
 
@@ -131,8 +115,8 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 
 <div class="gate" id="gate">
   <div class="gateCard">
-    <h2 id="gateH2">开始游戏</h2>
-    <button id="btnStart">开始 ▶</button>
+    <h2 id="gateH2">准备好了吗？</h2>
+    <button id="btnStart">开始游戏 ▶</button>
   </div>
 </div>
 
@@ -140,59 +124,37 @@ button.secondary{ background:rgba(15,23,42,.7); border:1px solid rgba(148,163,18
 <audio id="bgm" loop preload="auto"></audio>
 
 <script>
+/* --- 配置区 --- */
 const STORE = "wedding_game_v2";
-const GLOBAL_BGM = BASE_URL + "love_story.mp3";
-const GLOBAL_BGM_VOLUME = 0.35; // 推荐 0.3–0.4，婚礼现场最安全
-  
-// 阿里云 OSS 基础路径
+// ✅ 核心修复：先定义 BASE_URL
 const BASE_URL = "https://haibing-wedding-video.oss-cn-chengdu.aliyuncs.com/";
+const GLOBAL_BGM = BASE_URL + "love_story.mp3"; 
+const GLOBAL_BGM_VOLUME = 0.35;
 
 const CHAPTERS = [
   {
-    id: "ch1",
-    title: "第一章 · 初逢",
-    en: "The First Meeting",
-    bgm: BASE_URL + "bgm_ch1.mp3",
-    videos: [
-      BASE_URL + "chufeng_merge.mp4",
-      BASE_URL + "cuoyiban1.mp4"
-    ],
-    questions: [
-      {
-        id: "q_trash_sell",
-        after: BASE_URL + "chufeng_merge.mp4",
-        img: BASE_URL + "xuanbanzhang.png",
-        aspect: "2048/1152",
-        hotspots: [
-          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 10, left:55, top:63, width:36, height:18, nextVideo: BASE_URL + "right_selection.mp4" }
-        ]
-      }
-    ],
+    id: "ch1", title: "第一章 · 初逢", en: "THE FIRST MEETING",
+    videos: [BASE_URL + "chufeng_merge.mp4", BASE_URL + "cuoyiban1.mp4"],
+    questions: [{
+      id: "q_trash_sell", after: BASE_URL + "chufeng_merge.mp4", img: BASE_URL + "xuanbanzhang.png",
+      hotspots: [
+        { score: 0,  left:10, top:60, width:36, height:25, nextVideo: BASE_URL + "wrong_selection.mp4" },
+        { score: 10, left:55, top:60, width:36, height:25, nextVideo: BASE_URL + "right_selection.mp4" }
+      ]
+    }],
     nextChapterId: "ch2"
   },
   {
-    id: "ch2",
-    title: "第二章 · 相识",
-    en: "Getting to Know You",
-    bgm: BASE_URL + "bgm_ch2.mp3",
+    id: "ch2", title: "第二章 · 相识", en: "GETTING TO KNOW YOU",
     videos: [BASE_URL + "mailaji.mp4", BASE_URL + "liulian.mp4", BASE_URL + "langsong.mp4"],
     questions: [
-      {
-        id: "q_ch2_jiasai",
-        after: BASE_URL + "mailaji.mp4",
-        img: BASE_URL + "trash_selling1.png",
-        aspect: "2048/1152",
+      { id: "q_ch2_jiasai", after: BASE_URL + "mailaji.mp4", img: BASE_URL + "trash_selling1.png",
         hotspots: [
-          { score: 0,  left:10, top:63, width:36, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 10, left:55, top:63, width:36, height:18, nextVideo: BASE_URL + "right_selection.mp4" }
+          { score: 0,  left:10, top:60, width:36, height:25, nextVideo: BASE_URL + "wrong_selection.mp4" },
+          { score: 10, left:55, top:60, width:36, height:25, nextVideo: BASE_URL + "right_selection.mp4" }
         ]
       },
-      {
-        id: "q_ch2_trash_selling",
-        after: BASE_URL + "langsong.mp4",
-        img: BASE_URL + "jiasai.png",
-        aspect: "2048/1152",
+      { id: "q_ch2_trash_selling", after: BASE_URL + "langsong.mp4", img: BASE_URL + "jiasai.png",
         hotspots: [
           { score: 10, left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" },
           { score: 0,  left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" }
@@ -202,90 +164,47 @@ const CHAPTERS = [
     nextChapterId: "ch3"
   },
   {
-    id: "ch3",
-    title: "第三章 · 各行",
-    en: "Finding Our Own Paths",
-    bgm: BASE_URL + "bgm_ch3.mp3",
+    id: "ch3", title: "第三章 · 各行", en: "FINDING OUR OWN PATHS",
     videos: [BASE_URL + "gexing_merge13.mp4", BASE_URL + "gexing_merge15.mp4"],
-    questions: [
-      {
-        id: "q_ch3_1_work",
-        after: BASE_URL + "gexing_merge13.mp4",
-        img: BASE_URL + "gongzuo.png",
-        aspect: "2048/1188",
-        hotspots: [
-          { score: 0,  left:52.0, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 10, left:63.5, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "right_selection.mp4" },
-          { score: 0,  left:75.5, top:44.0, width:10.0, height:18.0, nextVideo: BASE_URL + "wrong_selection.mp4" }
-        ]
-      }
-    ],
+    questions: [{
+      id: "q_ch3_1_work", after: BASE_URL + "gexing_merge13.mp4", img: BASE_URL + "gongzuo.png",
+      hotspots: [
+        { score: 0,  left:52, top:44, width:10, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" },
+        { score: 10, left:63, top:44, width:10, height:18, nextVideo: BASE_URL + "right_selection.mp4" },
+        { score: 0,  left:75, top:44, width:10, height:18, nextVideo: BASE_URL + "wrong_selection.mp4" }
+      ]
+    }],
     nextChapterId: "ch4"
   },
   {
-    id: "ch4",
-    title: "第四章 · 再会",
-    en: "Reunion",
-    bgm: BASE_URL + "bgm_ch4.mp3",
+    id: "ch4", title: "第四章 · 再会", en: "REUNION",
     videos: [BASE_URL + "zaihui_merge11.mp4", BASE_URL + "zaihui5.mp4"],
-    questions: [
-      {
-        id: "q_ch4_beibao",
-        after: BASE_URL + "zaihui_merge11.mp4",
-        img: BASE_URL + "beibao.png",
-        aspect: "2048/1143",
-        hotspots: [
-          { score: 0,  left: 4.3, top: 73.8, width: 12.4, height: 25.6, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 0,  left: 24.2, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 0,  left: 43.8, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "right_selection.mp4" },
-          { score: 0,  left: 81.0, top: 73.9, width: 11.9, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" }
-        ]
-      }
-    ],
+    questions: [{
+      id: "q_ch4_beibao", after: BASE_URL + "zaihui_merge11.mp4", img: BASE_URL + "beibao.png",
+      hotspots: [
+        { score: 30, left: 62.7, top: 73.9, width: 12.3, height: 25.5, nextVideo: BASE_URL + "right_selection.mp4" },
+        { score: 0,  left: 5, top: 73.9, width: 50, height: 25.5, nextVideo: BASE_URL + "wrong_selection.mp4" }
+      ]
+    }],
     nextChapterId: "ch5"
   },
   {
-    id: "ch5",
-    title: "第五章 · 向前",
-    en: "Moving Forward",
-    bgm: BASE_URL + "bgm_ch5.mp3",
+    id: "ch5", title: "第五章 · 向前", en: "MOVING FORWARD",
     videos: [BASE_URL + "xiangqian_merge.mp4", BASE_URL + "xiangqian11.mp4", BASE_URL + "xiangqian5.mp4"],
-    questions: [
-      {
-        id: "q_ch5_xiangqian_guess",
-        after: BASE_URL + "xiangqian_merge.mp4",
-        img: BASE_URL + "yaoshi.png",
-        aspect: "2048/1152",
-        hotspots: [
-          { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" },
-          { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" }
-        ]
-      }
-    ],
+    questions: [{
+      id: "q_ch5_xiangqian_guess", after: BASE_URL + "xiangqian_merge.mp4", img: BASE_URL + "yaoshi.png",
+      hotspots: [
+        { score: 0,  left: 0,  top: 0, width: 50, height: 100, nextVideo: BASE_URL + "wrong_selection.mp4" },
+        { score: 30, left: 50, top: 0, width: 50, height: 100, nextVideo: BASE_URL + "right_selection.mp4" }
+      ]
+    }],
     nextChapterId: "ch6"
   },
-  {
-    id: "ch6",
-    title: "第六章 · 经年",
-    en: "Years Apart",
-    bgm: BASE_URL + "bgm_ch6.mp3",
-    videos: [BASE_URL + "jingnian_merge.mp4"],
-    questions: [],
-    nextChapterId: "ch7"
-  },
-  {
-    id: "ch7",
-    title: "第七章 · 此刻",
-    en: "This Moment",
-    bgm: BASE_URL + "bgm_ch7.mp3",
-    videos: [BASE_URL + "cike1.mp4", BASE_URL + "cike2.mp4", BASE_URL + "cike3.mp4"],
-    questions: [],
-    nextChapterId: null
-  }
+  { id: "ch6", title: "第六章 · 经年", en: "YEARS APART", videos: [BASE_URL + "jingnian_merge.mp4"], questions: [], nextChapterId: "ch7" },
+  { id: "ch7", title: "第七章 · 此刻", en: "THIS MOMENT", videos: [BASE_URL + "cike1.mp4", BASE_URL + "cike2.mp4", BASE_URL + "cike3.mp4"], questions: [], nextChapterId: null }
 ];
 
-/* 核心逻辑 */
+/* --- 核心逻辑 --- */
 const bgVideo = document.getElementById("bgVideo");
 const bgm = document.getElementById("bgm");
 const scoreEl = document.getElementById("score");
@@ -293,7 +212,6 @@ const timerEl = document.getElementById("timer");
 const chapterTitle = document.getElementById("chapterTitle");
 const chapterEn = document.getElementById("chapterEn");
 const gate = document.getElementById("gate");
-const gateH2 = document.getElementById("gateH2");
 const imgLayer = document.getElementById("imgLayer");
 const imgStage = document.getElementById("imgStage");
 const qImg = document.getElementById("qImg");
@@ -302,166 +220,141 @@ const toast = document.getElementById("toast");
 let curChapter = null, curVideoIndex = 0, endHandled = false, blockEnd = false;
 let injectedActive = false, injectedReturnIndex = 0;
 
-/* 存储辅助 */
-function get(k){ return localStorage.getItem(`${STORE}:${k}`); }
-function set(k,v){ localStorage.setItem(`${STORE}:${k}`, String(v)); }
-function loadScore(){ return Number(get("score") || 0); }
-function saveScore(v){ set("score", v); scoreEl.textContent = v; }
-function answeredKey(chId, qid){ return `answered:${chId}:${qid}`; }
-function isAnswered(chId, qid){ return get(answeredKey(chId, qid)) === "1"; }
-function markAnswered(chId, qid){ set(answeredKey(chId, qid), "1"); }
-
-function showToast(msg, ms=1400){
-  toast.textContent = msg;
-  toast.style.display = "block";
-  setTimeout(()=> toast.style.display="none", ms);
-}
-
-/* 计时器 */
-let timerTick = null;
-function updateTimerUI(){
-  const st = Number(get("timerStart") || 0);
-  const sp = Number(get("timerStop") || 0);
-  if (!st){ timerEl.textContent = "00:00"; return; }
-  const elapsed = (sp>0 ? (sp - st) : (Date.now() - st));
-  const s = Math.floor(elapsed/1000);
-  const mm = Math.floor(s/60);
-  const ss = s%60;
-  timerEl.textContent = `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-}
-
-/* 播放逻辑 */
-function loadVideo(i){
-  if (!curChapter) return;
-  blockEnd = false; endHandled = false;
-  curVideoIndex = i;
-  if (curVideoIndex >= curChapter.videos.length){
-    gotoNextChapter(); return;
-  }
-  bgVideo.src = curChapter.videos[curVideoIndex];
+// ✅ 统一步骤切换函数
+function switchVideo(url) {
+  blockEnd = false;
+  endHandled = false;
+  bgVideo.pause();
+  bgVideo.src = url;
   bgVideo.load();
+  bgVideo.play().catch(e => console.log("播放被拦截或失败:", e));
 }
 
-bgVideo.addEventListener("canplay", () => bgVideo.play().catch(()=>{}));
+function loadMainVideo(i) {
+  if (!curChapter) return;
+  if (i >= curChapter.videos.length) {
+    gotoNextChapter();
+    return;
+  }
+  curVideoIndex = i;
+  switchVideo(curChapter.videos[curVideoIndex]);
+}
 
-function handleEnd(){
+function handleEnd() {
   if (blockEnd || endHandled) return;
   endHandled = true;
-  if (injectedActive){
+
+  if (injectedActive) {
     injectedActive = false;
-    loadVideo(injectedReturnIndex); return;
+    loadMainVideo(injectedReturnIndex);
+    return;
   }
+
   const vidName = curChapter.videos[curVideoIndex];
   const q = (curChapter.questions || []).find(q => q.after === vidName);
-  if (q && !isAnswered(curChapter.id, q.id)){
-    setTimeout(()=> openQuestion(q), 100); return;
+  if (q && !isAnswered(curChapter.id, q.id)) {
+    setTimeout(() => openQuestion(q), 100);
+    return;
   }
-  loadVideo(curVideoIndex + 1);
+  loadMainVideo(curVideoIndex + 1);
 }
 
 bgVideo.addEventListener("ended", handleEnd);
 
-function openQuestion(q){
-  blockEnd = true; 
-  endHandled = true; // 进入答题模式，锁定视频跳转
+function openQuestion(q) {
+  blockEnd = true;
+  endHandled = true;
   bgVideo.pause();
-  
   qImg.src = q.img;
-  imgStage.style.aspectRatio = q.aspect || "2048/1152";
   
-  // 清除旧的热点
   imgStage.querySelectorAll(".hotspot").forEach(n => n.remove());
-  
   q.hotspots.forEach(h => {
     const div = document.createElement("div");
     div.className = "hotspot";
     div.style.cssText = `left:${h.left}%; top:${h.top}%; width:${h.width}%; height:${h.height}%;`;
-    
-    div.onclick = () => {
-      // 1. 处理积分
-      if (!isAnswered(curChapter.id, q.id)){
+    div.onclick = (e) => {
+      e.stopPropagation();
+      if (!isAnswered(curChapter.id, q.id)) {
         saveScore(loadScore() + h.score);
         markAnswered(curChapter.id, q.id);
       }
-      
-      // 2. 隐藏题目层
       imgLayer.style.display = "none";
       
-      // ✅ 关键修复点：解除逻辑锁定
-      blockEnd = false; 
-      endHandled = false; 
-
-      if (h.nextVideo){
-        // 进入分支视频流程
-        injectedActive = true; 
+      if (h.nextVideo) {
+        injectedActive = true;
         injectedReturnIndex = curVideoIndex + 1;
-        bgVideo.src = h.nextVideo; 
-        bgVideo.load();
-        // 在点击事件内直接触发 play，保证浏览器权限
-        bgVideo.play().catch(e => console.log("播放被拦截:", e));
+        switchVideo(h.nextVideo);
       } else {
-        // 直接进入下一段视频
-        loadVideo(curVideoIndex + 1);
+        loadMainVideo(curVideoIndex + 1);
       }
     };
     imgStage.appendChild(div);
   });
   imgLayer.style.display = "flex";
 }
-function startChapterById(chId){
-  curChapter = CHAPTERS.find(c => c.id === chId);
-  set("currentChapterId", chId);
 
-  chapterTitle.childNodes[0].nodeValue = curChapter.title + "\n  ";
-  chapterEn.textContent = curChapter.en;
+/* --- 存储与工具 --- */
+function get(k){ return localStorage.getItem(`${STORE}:${k}`); }
+function set(k,v){ localStorage.setItem(`${STORE}:${k}`, String(v)); }
+function loadScore(){ return Number(get("score") || 0); }
+function saveScore(v){ set("score", v); scoreEl.textContent = v; }
+function isAnswered(chId, qid){ return get(`answered:${chId}:${qid}`) === "1"; }
+function markAnswered(chId, qid){ set(`answered:${chId}:${qid}`, "1"); }
+function showToast(msg){ toast.textContent = msg; toast.style.display="block"; setTimeout(()=>toast.style.display="none", 2000); }
 
-  // ❌ 不再在章节里控制音乐
-  loadVideo(0);
+let timerTick = null;
+function updateTimerUI(){
+  const st = Number(get("timerStart") || 0);
+  const elapsed = Date.now() - st;
+  const s = Math.floor(elapsed/1000);
+  timerEl.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 }
 
+function startChapterById(chId) {
+  curChapter = CHAPTERS.find(c => c.id === chId);
+  set("currentChapterId", chId);
+  chapterTitle.childNodes[0].nodeValue = curChapter.title + " ";
+  chapterEn.textContent = curChapter.en;
+  loadMainVideo(0);
+}
 
-function gotoNextChapter(){
-  if (!curChapter.nextChapterId){
-    set("timerStop", Date.now()); clearInterval(timerTick);
-    showToast("全剧终"); return;
+function gotoNextChapter() {
+  if (!curChapter.nextChapterId) {
+    showToast("全剧终！感谢观看");
+    return;
   }
   const next = CHAPTERS.find(c => c.id === curChapter.nextChapterId);
   gate.style.display = "flex";
-  gateH2.textContent = `进入 ${next.title}`;
+  document.getElementById("gateH2").textContent = `通关成功！进入 ${next.title}`;
   document.getElementById("btnStart").onclick = () => {
-    gate.style.display = "none"; startChapterById(next.id);
+    gate.style.display = "none";
+    startChapterById(next.id);
   };
 }
 
-/* 初始化 */
+/* --- 初始化 --- */
 saveScore(loadScore());
-if (get("timerStart") && !get("timerStop")) timerTick = setInterval(updateTimerUI, 1000);
 
 document.getElementById("btnStart").onclick = () => {
   gate.style.display = "none";
-
-  // ✅ 只在第一次用户交互时启动背景音乐
-  if (!bgm.src) {
+  
+  // ✅ 关键：用户点击时解锁声音
+  if (!bgm.src || bgm.src === "") {
     bgm.src = GLOBAL_BGM;
     bgm.volume = GLOBAL_BGM_VOLUME;
-    bgm.loop = true;
-    bgm.play().catch(e => {
-      console.log("BGM autoplay blocked, waiting user interaction", e);
-    });
+    bgm.play().catch(e => console.log("BGM 播放受阻:", e));
   }
+  bgVideo.muted = false; // 确保视频有声
 
   if (!get("timerStart")) set("timerStart", Date.now());
-  timerTick = setInterval(updateTimerUI, 1000);
-
+  if (!timerTick) timerTick = setInterval(updateTimerUI, 1000);
+  
   const last = get("currentChapterId");
   startChapterById(last || "ch1");
 };
 
-
 document.getElementById("btnReset").onclick = () => {
-  if(confirm("重置所有进度？")){
-    localStorage.clear(); location.reload();
-  }
+  if(confirm("确定重置所有进度吗？")) { localStorage.clear(); location.reload(); }
 };
 </script>
 </body>
