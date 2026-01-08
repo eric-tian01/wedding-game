@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>剧情游戏 - 稳定无重置版</title>
+<title>剧情游戏 - 此刻之前</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <style>
 *{ box-sizing:border-box; }
@@ -182,10 +182,15 @@ const CHAPTERS = [
     id: "ch4", title: "第四章 · 再会", en: "REUNION",
     videos: [BASE_URL + "zaihui_merge11.mp4", BASE_URL + "zaihui5.mp4"],
     questions: [{
-      id: "q_ch4_beibao", after: BASE_URL + "zaihui_merge11.mp4", img: BASE_URL + "beibao.png",
+      id: "q_ch4_beibao", 
+      after: BASE_URL + "zaihui_merge11.mp4", 
+      img: BASE_URL + "beibao.png",
       hotspots: [
-        { score: 30, left: 62, top: 72, width: 14, height: 28, nextVideo: BASE_URL + "right_selection.mp4" },
-        { score: 0,  left: 5, top: 72, width: 50, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }
+        { score: 0,  left: 3,   top: 72, width: 15, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }, // A
+        { score: 0,  left: 22,  top: 72, width: 15, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }, // B
+        { score: 0,  left: 41,  top: 72, width: 15, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }, // C
+        { score: 30, left: 60,  top: 72, width: 15, height: 28, nextVideo: BASE_URL + "right_selection.mp4" }, // D (正确)
+        { score: 0,  left: 79,  top: 72, width: 15, height: 28, nextVideo: BASE_URL + "wrong_selection.mp4" }  // E (补回)
       ]
     }],
     nextChapterId: "ch5"
